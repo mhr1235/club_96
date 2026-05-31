@@ -9,11 +9,14 @@ from fastapi.staticfiles import StaticFiles
 ROOT = Path(__file__).resolve().parent.parent
 WEB = ROOT / "web"
 AGENTS = ROOT / "agents"
+WORLD = ROOT / "world"
+CONVERSATION_LOG = WORLD / "conversation.json"
+
+TURN_ORDER = ["alice", "bob", "mallory"]
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory=WEB), name="static")
 
-# Later, replace localhost with each gallery PC's IP or Tailscale IP.
 AGENT_CONFIG = {
     "alice": {
         "ollama_url": "http://localhost:11434",
@@ -25,7 +28,7 @@ AGENT_CONFIG = {
     "bob": {
         "ollama_url": "http://localhost:11434",
         "model": "llama3.2:latest",
-        "temperature": 0.45,
+        "temperature": 0.55,
         "num_predict": 500,
         "min_response_length": 100,
     },
@@ -44,6 +47,11 @@ def home():
     return FileResponse(WEB / "index.html")
 
 
+@app.get("/sim")
+def simulation_page():
+    return FileResponse(WEB / "sim.html")
+
+
 def load_json(path: Path, fallback):
     if not path.exists():
         return fallback
@@ -56,6 +64,11 @@ def load_json(path: Path, fallback):
     return json.loads(text)
 
 
+def save_json(path: Path, data):
+    path.parent.mkdir(exist_ok=True)
+    path.write_text(json.dumps(data, indent=2))
+
+
 def read_optional_text(path: Path):
     if not path.exists():
         return ""
@@ -63,9 +76,46 @@ def read_optional_text(path: Path):
     return path.read_text()
 
 
-def run_agent(agent_name: str):
+def load_conversation():
+    return load_json(CONVERSATION_LOG, [])
+
+
+def save_conversation(conversation):
+    save_json(CONVERSATION_LOG, conversation)
+
+
+def get_next_agent(conversation):
+    return TURN_ORDER[len(conversation) % len(TURN_ORDER)]
+
+
+def format_recent_conversation(conversation, limit=12):
+    recent = conversation[-limit:]
+
+    if not recent:
+        return "No one has spoken yet. You are helping begin the simulation."
+
+    lines = []
+
+    for entry in recent:
+        speaker = entry.get("speaker", "unknown").title()
+        speech = entry.get("speech", "")
+        mood = entry.get("mood", "")
+        action = entry.get("action", {})
+
+        lines.append(
+            f"{speaker} said: {speech}\n"
+            f"Mood: {mood}\n"
+            f"Action: {json.dumps(action)}"
+        )
+
+    return "\n\n".join(lines)
+
+
+def run_agent(agent_name: str, conversation=None):
     if agent_name not in AGENT_CONFIG:
         return {"error": f"Unknown agent: {agent_name}"}
+
+    conversation = conversation or []
 
     agent_dir = AGENTS / agent_name
     config = AGENT_CONFIG[agent_name]
@@ -74,6 +124,8 @@ def run_agent(agent_name: str):
     memory = load_json(agent_dir / "memory.json", {"memories": []})
     state = load_json(agent_dir / "state.json", {})
     rag_notes = read_optional_text(agent_dir / "rag" / "notes.md")
+
+    recent_conversation = format_recent_conversation(conversation)
 
     prompt = f"""
 {character}
@@ -86,12 +138,24 @@ def run_agent(agent_name: str):
 
 ## Relevant Knowledge
 {rag_notes}
+
+## Recent Conversation
+{recent_conversation}
 """
 
     user_prompt = f"""
-You are {agent_name}, participating in an autonomous simulation.
+You are {agent_name}, participating in an autonomous multi-agent simulation.
 
-Choose your next action for the queer bookstore/bar project.
+You are not speaking in isolation.
+
+You are responding to the recent conversation between Alice, Bob, and Mallory.
+
+Advance the shared simulation for the queer bookstore/bar project.
+
+React to what the others have said.
+Build on, challenge, redirect, support, or complicate the conversation according to your personality.
+
+Your speech should be at least {config["min_response_length"]} words.
 
 Return ONLY valid JSON.
 No markdown.
@@ -101,16 +165,13 @@ The JSON must include all four top-level keys:
 speech, mood, action, memory_update.
 
 {{
-  "speech": "A detailed message of at least 120 words.
-The agent should explain its reasoning,
-react to the current situation,
-and propose next steps.",
+  "speech": "What the agent says aloud in response to the group conversation.",
   "mood": "one-word mood",
   "action": {{
     "type": "short_action_type",
     "description": "what the agent decides to do next"
   }},
-  "memory_update": "one sentence describing what the agent learned or decided"
+  "memory_update": "one sentence describing what the agent learned, noticed, or decided"
 }}
 """
 
@@ -144,9 +205,50 @@ and propose next steps.",
 
 @app.get("/api/{agent_name}/tick")
 def agent_tick(agent_name: str):
-    result = run_agent(agent_name)
+    conversation = load_conversation()
+    result = run_agent(agent_name, conversation)
     status = 404 if "error" in result else 200
     return JSONResponse(result, status_code=status)
+
+
+@app.post("/api/sim/tick")
+def simulation_tick():
+    conversation = load_conversation()
+    agent_name = get_next_agent(conversation)
+
+    result = run_agent(agent_name, conversation)
+
+    if "error" not in result:
+        entry = {
+            "turn": len(conversation) + 1,
+            "speaker": agent_name,
+            "speech": result.get("speech", ""),
+            "mood": result.get("mood", ""),
+            "action": result.get("action", {}),
+            "memory_update": result.get("memory_update", ""),
+        }
+
+        conversation.append(entry)
+        save_conversation(conversation)
+
+    return JSONResponse(
+        {
+            "agent": agent_name,
+            "result": result,
+            "conversation": conversation,
+        }
+    )
+
+
+@app.get("/api/sim/conversation")
+def get_conversation():
+    return JSONResponse(load_conversation())
+
+
+@app.post("/api/sim/reset")
+def reset_conversation():
+    save_conversation([])
+    return JSONResponse({"status": "reset", "conversation": []})
 
 
 @app.get("/api/agents")
