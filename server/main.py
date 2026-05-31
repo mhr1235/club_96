@@ -18,14 +18,23 @@ AGENT_CONFIG = {
     "alice": {
         "ollama_url": "http://localhost:11434",
         "model": "gemma3:4b",
+        "temperature": 0.8,
+        "num_predict": 500,
+        "min_response_length": 120,
     },
     "bob": {
         "ollama_url": "http://localhost:11434",
         "model": "llama3.2:latest",
+        "temperature": 0.45,
+        "num_predict": 500,
+        "min_response_length": 100,
     },
     "mallory": {
         "ollama_url": "http://localhost:11434",
         "model": "mistral:7b",
+        "temperature": 0.95,
+        "num_predict": 700,
+        "min_response_length": 150,
     },
 }
 
@@ -38,15 +47,19 @@ def home():
 def load_json(path: Path, fallback):
     if not path.exists():
         return fallback
+
     text = path.read_text().strip()
+
     if not text:
         return fallback
+
     return json.loads(text)
 
 
 def read_optional_text(path: Path):
     if not path.exists():
         return ""
+
     return path.read_text()
 
 
@@ -75,13 +88,7 @@ def run_agent(agent_name: str):
 {rag_notes}
 """
 
-    payload = {
-        "model": config["model"],
-        "messages": [
-            {"role": "system", "content": prompt},
-            {
-                "role": "user",
-                "content": f"""
+    user_prompt = f"""
 You are {agent_name}, participating in an autonomous simulation.
 
 Choose your next action for the queer bookstore/bar project.
@@ -94,7 +101,10 @@ The JSON must include all four top-level keys:
 speech, mood, action, memory_update.
 
 {{
-  "speech": "A 4-5 sentence message the agent would say aloud.",
+  "speech": "A detailed message of at least 120 words.
+The agent should explain its reasoning,
+react to the current situation,
+and propose next steps.",
   "mood": "one-word mood",
   "action": {{
     "type": "short_action_type",
@@ -102,14 +112,19 @@ speech, mood, action, memory_update.
   }},
   "memory_update": "one sentence describing what the agent learned or decided"
 }}
-""",
-            },
+"""
+
+    payload = {
+        "model": config["model"],
+        "messages": [
+            {"role": "system", "content": prompt},
+            {"role": "user", "content": user_prompt},
         ],
         "stream": False,
         "format": "json",
         "options": {
-            "temperature": 0.7,
-            "num_predict": 500,
+            "temperature": config["temperature"],
+            "num_predict": config["num_predict"],
         },
     }
 
@@ -118,6 +133,8 @@ speech, mood, action, memory_update.
         json=payload,
         timeout=120,
     )
+
+    response.raise_for_status()
 
     content = response.json()["message"]["content"]
     agent_output = json.loads(content)
