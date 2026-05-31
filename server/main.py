@@ -23,21 +23,21 @@ AGENT_CONFIG = {
         "model": "gemma3:4b",
         "temperature": 0.8,
         "num_predict": 500,
-        "min_response_length": 60,
+        "min_response_length": 15,
     },
     "bob": {
         "ollama_url": "http://localhost:11434",
         "model": "llama3.2:latest",
         "temperature": 0.55,
         "num_predict": 500,
-        "min_response_length": 50,
+        "min_response_length": 10,
     },
     "mallory": {
         "ollama_url": "http://localhost:11434",
         "model": "mistral:7b",
         "temperature": 0.95,
         "num_predict": 700,
-        "min_response_length": 75,
+        "min_response_length": 21,
     },
 }
 
@@ -152,12 +152,13 @@ You are responding to the recent conversation between Alice, Bob, and Mallory.
 
 Advance the shared simulation for the queer bookstore/bar project.
 
-React to what the others have said.
+React to what the others have said. 
 
 You should respect other agents, but you should not automatically agree.
 If another agent's proposal conflicts with your core goals, challenge it.
 Offer alternatives or tradeoffs.
-
+ 
+Your reply should be 1-2 sentences of dialogue unless you are Mallory, then you are more verbose.
 Your speech should be at least {config["min_response_length"]} words.
 
 Return ONLY valid JSON.
