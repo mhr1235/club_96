@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Boston Bots</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #111;
+      color: #f4f4f4;
+      padding: 2rem;
+      max-width: 1000px;
+      margin: auto;
+    }
+
+    h1 {
+      margin-bottom: 0.25rem;
+    }
+
+    .subtitle {
+      color: #aaa;
+      margin-bottom: 1.5rem;
+    }
+
+    .controls {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+
+    button {
+      padding: 0.8rem 1rem;
+      border-radius: 999px;
+      border: 0;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+    }
+
+    .card {
+      border: 1px solid #444;
+      border-radius: 16px;
+      padding: 1.5rem;
+      background: #1c1c1c;
+    }
+
+    .label {
+      color: #aaa;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      margin-top: 1rem;
+      letter-spacing: 0.05em;
+    }
+
+    .speech {
+      font-size: 1.05rem;
+      line-height: 1.5;
+    }
+
+    pre {
+      white-space: pre-wrap;
+      background: #000;
+      padding: 1rem;
+      border-radius: 12px;
+      overflow-x: auto;
+    }
+
+    .status {
+      color: #aaa;
+      margin: 1rem 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Boston Bots</h1>
+  <p class="subtitle">Proof-of-concept distributed multi-agent simulation.</p>
+
+  <div class="controls">
+    <button onclick="tickAgent('alice')">Run Alice</button>
+    <button onclick="tickAgent('bob')">Run Bob</button>
+    <button onclick="tickAgent('mallory')">Run Mallory</button>
+    <button onclick="tickAll()">Run All</button>
+  </div>
+
+  <div id="status" class="status">Ready.</div>
+
+  <div class="grid">
+    <div class="card" id="card-alice">
+      <h2>Alice</h2>
+      <div class="label">Speech</div>
+      <div id="alice-speech" class="speech">Waiting.</div>
+      <div class="label">Mood</div>
+      <div id="alice-mood">—</div>
+      <div class="label">Action</div>
+      <pre id="alice-action">—</pre>
+      <div class="label">Memory Update</div>
+      <div id="alice-memory">—</div>
+    </div>
+
+    <div class="card" id="card-bob">
+      <h2>Bob</h2>
+      <div class="label">Speech</div>
+      <div id="bob-speech" class="speech">Waiting.</div>
+      <div class="label">Mood</div>
+      <div id="bob-mood">—</div>
+      <div class="label">Action</div>
+      <pre id="bob-action">—</pre>
+      <div class="label">Memory Update</div>
+      <div id="bob-memory">—</div>
+    </div>
+
+    <div class="card" id="card-mallory">
+      <h2>Mallory</h2>
+      <div class="label">Speech</div>
+      <div id="mallory-speech" class="speech">Waiting.</div>
+      <div class="label">Mood</div>
+      <div id="mallory-mood">—</div>
+      <div class="label">Action</div>
+      <pre id="mallory-action">—</pre>
+      <div class="label">Memory Update</div>
+      <div id="mallory-memory">—</div>
+    </div>
+  </div>
+
+  <script>
+    const agents = ["alice", "bob", "mallory"];
+
+    function setAgentLoading(agentName) {
+      document.getElementById(`${agentName}-speech`).textContent = "Thinking...";
+      document.getElementById(`${agentName}-mood`).textContent = "—";
+      document.getElementById(`${agentName}-action`).textContent = "—";
+      document.getElementById(`${agentName}-memory`).textContent = "—";
+    }
+
+    function setAgentOutput(agentName, data) {
+      if (data.error) {
+        document.getElementById(`${agentName}-speech`).textContent = data.error;
+        return;
+      }
+
+      document.getElementById(`${agentName}-speech`).textContent = data.speech || "No speech returned.";
+      document.getElementById(`${agentName}-mood`).textContent = data.mood || "—";
+      document.getElementById(`${agentName}-action`).textContent = JSON.stringify(data.action || {}, null, 2);
+      document.getElementById(`${agentName}-memory`).textContent = data.memory_update || "—";
+    }
+
+    async function tickAgent(agentName) {
+      setAgentLoading(agentName);
+      document.getElementById("status").textContent = `Running ${agentName}...`;
+
+      try {
+        const response = await fetch(`/api/${agentName}/tick`);
+        const data = await response.json();
+        setAgentOutput(agentName, data);
+        document.getElementById("status").textContent = `Finished ${agentName}.`;
+      } catch (error) {
+        document.getElementById(`${agentName}-speech`).textContent = `Error: ${error}`;
+        document.getElementById("status").textContent = `Error running ${agentName}.`;
+      }
+    }
+
+    async function tickAll() {
+      document.getElementById("status").textContent = "Running all agents...";
+      for (const agent of agents) {
+        await tickAgent(agent);
+      }
+      document.getElementById("status").textContent = "Finished all agents.";
+    }
+  </script>
+</body>
+</html>

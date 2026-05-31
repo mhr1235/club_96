@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+
+agents/*/memory.json
+agents/*/state.json
+
+.DS_Store
+
+
