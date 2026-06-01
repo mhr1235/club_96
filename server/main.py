@@ -19,6 +19,8 @@ WORLD_STATE_LOG = WORLD / "worldState.json"
 
 TURN_ORDER = ["alice", "bob", "mallory"]
 
+CURRENT_ROUND = []
+
 WEAK_MEMORY_PHRASES = [
     "noted potential benefits",
     "considered potential benefits",
@@ -111,7 +113,16 @@ def save_conversation(conversation):
 
 
 def get_next_agent(conversation):
-    return random.choice(TURN_ORDER)
+    #return random.choice(TURN_ORDER)
+    global CURRENT_ROUND
+
+    if not CURRENT_ROUND:
+        CURRENT_ROUND = TURN_ORDER.copy()
+        random.shuffle(CURRENT_ROUND)
+
+        print(f"New round order: {CURRENT_ROUND}")
+
+    return CURRENT_ROUND.pop(0)
 
 
 def format_recent_conversation(conversation, limit=8):

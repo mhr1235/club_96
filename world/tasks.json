@@ -3,7 +3,7 @@
     {
       "title": "local_artist_fundraiser_event_planning",
       "owner": "mallory",
-      "status": "completed"
+      "status": "in_progress"
     },
     {
       "title": "queer_history_digital_exhibit_research",
@@ -14,6 +14,26 @@
       "title": "queer_history_immersive_workshop_planning",
       "owner": "mallory",
       "status": "open"
+    },
+    {
+      "title": "event_ideas_brainstorming",
+      "owner": "alice",
+      "status": "in_progress"
+    },
+    {
+      "title": "zine-making_night_planning",
+      "owner": "bob",
+      "status": "in_progress"
+    },
+    {
+      "title": "local_artist_exhibition_planning",
+      "owner": "alice",
+      "status": "in_progress"
+    },
+    {
+      "title": "queer_history_digital_exhibit_planning",
+      "owner": "mallory",
+      "status": "in_progress"
     }
   ]
 }
