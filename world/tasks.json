@@ -95,6 +95,198 @@
       "recruiting": false,
       "recruitment_target": "",
       "recruitment_note": ""
+    },
+    {
+      "title": "Diverse Performance Night",
+      "owner": "mallory",
+      "collaborators": [],
+      "status": "proposed",
+      "supporters": [
+        "mallory"
+      ],
+      "objectors": [],
+      "progress": 0,
+      "energy_cost": 25,
+      "energy_reward": 30,
+      "recruiting": false,
+      "recruitment_target": "",
+      "recruitment_note": ""
+    },
+    {
+      "title": "Vogue Night Pilot Project",
+      "owner": "alice",
+      "collaborators": [],
+      "status": "proposed",
+      "supporters": [
+        "mallory"
+      ],
+      "objectors": [],
+      "progress": 0,
+      "energy_cost": 15,
+      "energy_reward": 25,
+      "recruiting": false,
+      "recruitment_target": "",
+      "recruitment_note": ""
+    },
+    {
+      "title": "Ballroom Culture Art Exhibition",
+      "owner": "mallory",
+      "collaborators": [],
+      "status": "proposed",
+      "supporters": [
+        "mallory"
+      ],
+      "objectors": [],
+      "progress": 0,
+      "energy_cost": 20,
+      "energy_reward": 30,
+      "recruiting": false,
+      "recruitment_target": "",
+      "recruitment_note": ""
+    },
+    {
+      "title": "Atmosphere Management Pilot",
+      "owner": "alice",
+      "collaborators": [],
+      "status": "proposed",
+      "supporters": [
+        "alice"
+      ],
+      "objectors": [],
+      "progress": 0,
+      "energy_cost": 10,
+      "energy_reward": 20,
+      "recruiting": false,
+      "recruitment_target": "",
+      "recruitment_note": ""
+    },
+    {
+      "title": "Queer Performance Night",
+      "owner": "mallory",
+      "collaborators": [],
+      "status": "proposed",
+      "supporters": [
+        "mallory"
+      ],
+      "objectors": [],
+      "progress": 0,
+      "energy_cost": 25,
+      "energy_reward": 30,
+      "recruiting": false,
+      "recruitment_target": "",
+      "recruitment_note": ""
+    },
+    {
+      "title": "Themed Art Installation & Performances",
+      "owner": "mallory",
+      "collaborators": [],
+      "status": "proposed",
+      "supporters": [
+        "mallory"
+      ],
+      "objectors": [],
+      "progress": 0,
+      "energy_cost": 25,
+      "energy_reward": 30,
+      "recruiting": false,
+      "recruitment_target": "",
+      "recruitment_note": ""
+    },
+    {
+      "title": "Queer Pulse - Weekly Performance Event",
+      "owner": "alice",
+      "collaborators": [],
+      "status": "proposed",
+      "supporters": [
+        "alice"
+      ],
+      "objectors": [],
+      "progress": 0,
+      "energy_cost": 15,
+      "energy_reward": 25,
+      "recruiting": false,
+      "recruitment_target": "",
+      "recruitment_note": ""
+    },
+    {
+      "title": "Diverse Queer Performance Night",
+      "owner": "mallory",
+      "collaborators": [],
+      "status": "proposed",
+      "supporters": [
+        "mallory"
+      ],
+      "objectors": [],
+      "progress": 0,
+      "energy_cost": 25,
+      "energy_reward": 30,
+      "recruiting": false,
+      "recruitment_target": "",
+      "recruitment_note": ""
+    },
+    {
+      "title": "Planning 'Queer Pulse' Event",
+      "owner": "mallory",
+      "collaborators": [],
+      "status": "proposed",
+      "supporters": [
+        "mallory"
+      ],
+      "objectors": [],
+      "progress": 0,
+      "energy_cost": 25,
+      "energy_reward": 30,
+      "recruiting": false,
+      "recruitment_target": "",
+      "recruitment_note": ""
+    },
+    {
+      "title": "Secure Reliable Sound System and Staffing",
+      "owner": "bob",
+      "collaborators": [],
+      "status": "proposed",
+      "supporters": [
+        "bob"
+      ],
+      "objectors": [],
+      "progress": 0,
+      "energy_cost": 15,
+      "energy_reward": 25,
+      "recruiting": false,
+      "recruitment_target": "",
+      "recruitment_note": ""
+    },
+    {
+      "title": "Contact Local Queer Performance Groups",
+      "owner": "alice",
+      "collaborators": [],
+      "status": "proposed",
+      "supporters": [
+        "alice"
+      ],
+      "objectors": [],
+      "progress": 0,
+      "energy_cost": 15,
+      "energy_reward": 25,
+      "recruiting": false,
+      "recruitment_target": "",
+      "recruitment_note": ""
+    },
+    {
+      "title": "Collaborate with Local Arts Organizations",
+      "owner": "mallory",
+      "collaborators": [],
+      "status": "proposed",
+      "supporters": [
+        "mallory"
+      ],
+      "objectors": [],
+      "progress": 0,
+      "energy_cost": 25,
+      "energy_reward": 30,
+      "recruiting": false,
+      "recruitment_target": "",
+      "recruitment_note": ""
     }
   ]
 }

@@ -4,6 +4,18 @@
   <meta charset="UTF-8" />
   <title>Club 96 Simulation</title>
   <style>
+    pre {
+  white-space: pre-wrap;
+  background: #000;
+  color: #d6d6d6;
+  padding: 1rem;
+  border-radius: 12px;
+  overflow-x: auto;
+  border: 1px solid #222;
+  font-size: 0.9rem;
+}
+
+
     body {
       font-family: system-ui, sans-serif;
       background: #111;
@@ -64,34 +76,92 @@
     .entry h2 {
       margin: 0 0 0.5rem 0;
       text-transform: capitalize;
+      font-size: 2rem;
+
     }
 
+    @font-face {
+  font-family: "GerardoVelazquez";
+  src: url("/static/fonts/GerardoVela-zquez.woff") format("woff");
+}
+
+@font-face {
+  font-family: "ThirdWorldGayRevolution";
+  src: url("/static/fonts/ThirdWorldGayRevolution.woff") format("woff");
+}
+
+@font-face {
+  font-family: "Moonstorm";
+  src: url("/static/fonts/Moonstorm.woff") format("woff");
+}
+
+.entry.alice {
+  background: #c692e7;
+  color: #111;
+}
+
+.entry.bob {
+  background: #ffbc61;
+  color: #111;
+}
+
+.entry.mallory {
+  background: #a8f49c;
+  color: #111;
+}
+
+.entry.alice h2 {
+  font-family: "ThirdWorldGayRevolution", system-ui, sans-serif;
+}
+
+.entry.bob h2 {
+  font-family: "Moonstorm", system-ui, sans-serif;
+}
+
+.entry.mallory h2 {
+  font-family: "GerardoVelazquez", system-ui, sans-serif;
+}
+
+.entry.alice .speech {
+  font-family: "ThirdWorldGayRevolution", system-ui, sans-serif;
+}
+
+.entry.bob .speech {
+  font-family: "Moonstorm", system-ui, sans-serif;
+}
+
+.entry.mallory .speech {
+  font-family: "GerardoVelazquez", system-ui, sans-serif;
+}
+
     .meta {
-      color: #aaa;
+      color: rgba(255,255,255,0.9);
       font-size: 0.85rem;
       margin-bottom: 0.75rem;
     }
 
     .speech {
-      font-size: 1.05rem;
+      font-size: 1.12rem;
       line-height: 1.55;
-      margin-bottom: 1rem;
+      margin-bottom: 0.25rem;
     }
 
-    .label {
-      color: #aaa;
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-top: 0.75rem;
+    .cursor::after {
+      content: "▋";
+      margin-left: 2px;
+      animation: blink 0.8s infinite;
     }
 
-    pre {
-      white-space: pre-wrap;
-      background: #000;
-      padding: 1rem;
-      border-radius: 12px;
-      overflow-x: auto;
+    h1{
+
+        font-family: "GerardoVelazquez", system-ui, sans-serif;
+        color: red;
+
+    }
+
+    @keyframes blink {
+      0%, 50% { opacity: 1; }
+      51%, 100% { opacity: 0; }
     }
 
     a {
@@ -114,51 +184,83 @@
   <div id="status" class="status">Ready.</div>
 
   <div id="conversation" class="conversation"></div>
+ 
+
+  
 
   <script>
-    function formatAction(action) {
-      if (!action) return "—";
-      return JSON.stringify(action, null, 2);
-    }
+    function typeText(element, text, speed = 18) {
+      element.textContent = "";
+      element.classList.add("cursor");
 
-    function renderConversation(conversation) {
-      const container = document.getElementById("conversation");
+      let index = 0;
 
-      if (!conversation || conversation.length === 0) {
-        container.innerHTML = `
-          <div class="entry">
-            <h2>No conversation yet</h2>
-            <div class="speech">Click “Advance Simulation” to begin.</div>
-          </div>
-        `;
-        return;
+      function typeNextCharacter() {
+        if (index < text.length) {
+          element.textContent += text[index];
+          index++;
+          setTimeout(typeNextCharacter, speed);
+        } else {
+          element.classList.remove("cursor");
+        }
       }
 
-      container.innerHTML = conversation.map((entry) => `
-        <div class="entry">
-          <h2>${entry.speaker}</h2>
-          <div class="meta">Turn ${entry.turn} · Mood: ${entry.mood || "—"}</div>
-
-          <div class="speech">${entry.speech || "No speech returned."}</div>
-
-          <div class="label">Action</div>
-          <pre>${formatAction(entry.action)}</pre>
-
-          <div class="label">Memory Update</div>
-          <div>${entry.memory_update || "—"}</div>
-        </div>
-      `).join("");
-
-      window.scrollTo({
-        top: document.body.scrollHeight,
-        behavior: "smooth"
-      });
+      typeNextCharacter();
     }
 
+function renderConversation(conversation, animateLast = false) {
+  const container = document.getElementById("conversation");
+
+  if (!conversation || conversation.length === 0) {
+    container.innerHTML = `
+      <div class="entry ${entry.speaker}">
+        <h2>No conversation yet</h2>
+        <div class="speech">Click “Advance Simulation” to begin.</div>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = conversation.map((entry, index) => {
+    const isLast = index === conversation.length - 1;
+    const speech = entry.speech || "No speech returned.";
+
+    return `
+     <div class="entry ${entry.speaker}">
+        <h2>${entry.speaker}</h2>
+        <div class="meta">Turn ${entry.turn} · Mood: ${entry.mood || "—"}</div>
+
+        <div class="speech" id="${isLast ? "latest-speech" : ""}">
+          ${animateLast && isLast ? "" : speech}
+        </div>
+
+        <div class="label">Action</div>
+        <pre>${JSON.stringify(entry.action || {}, null, 2)}</pre>
+
+        <div class="label">Memory Update</div>
+        <div>${entry.memory_update || "—"}</div>
+      </div>
+    `;
+  }).join("");
+
+  if (animateLast) {
+    const latest = conversation[conversation.length - 1];
+    const latestElement = document.getElementById("latest-speech");
+
+    if (latestElement) {
+      typeText(latestElement, latest.speech || "No speech returned.");
+    }
+  }
+
+  window.scrollTo({
+    top: document.body.scrollHeight,
+    behavior: "smooth"
+  });
+}
     async function loadConversation() {
       const response = await fetch("/api/sim/conversation");
       const conversation = await response.json();
-      renderConversation(conversation);
+      renderConversation(conversation, false);
     }
 
     async function advanceSimulation() {
@@ -171,7 +273,7 @@
 
         const data = await response.json();
 
-        renderConversation(data.conversation);
+        renderConversation(data.conversation, true);
         document.getElementById("status").textContent = `Finished ${data.agent}.`;
       } catch (error) {
         document.getElementById("status").textContent = `Error: ${error}`;
@@ -197,7 +299,7 @@
       });
 
       const data = await response.json();
-      renderConversation(data.conversation);
+      renderConversation(data.conversation, false);
       document.getElementById("status").textContent = "Conversation reset.";
     }
 
@@ -205,3 +307,4 @@
   </script>
 </body>
 </html>
+

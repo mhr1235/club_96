@@ -447,6 +447,7 @@ You may:
 - react to visitors
 - discuss art
 - discuss nightlife
+- talk about queer cullture especially
 - discuss community dynamics
 - tell stories
 - observe strange happenings
@@ -463,6 +464,7 @@ If another agent's proposal conflicts with your core goals, challenge it.
 Offer alternatives or tradeoffs.
 
 Your reply should be 1-2 sentences of dialogue unless you are Mallory, then you are more verbose.
+Avoid repeating the same objection in similar language. If you disagree, make the disagreement more specific than the previous turn.
 Your speech should be at least {config["min_response_length"]} words.
 
 Use the Shared Tasks list to continue existing work.
@@ -545,10 +547,20 @@ speech, mood, action, memory_update, task_update.
     response.raise_for_status()
 
     content = response.json()["message"]["content"]
-    agent_output = json.loads(content)
+    try:
+        agent_output = json.loads(content)
+
+    except json.JSONDecodeError:
+        print("INVALID JSON FROM MODEL:")
+        print(content)
+
+        return {
+            "error": f"{agent_name} returned invalid JSON.",
+            "raw_content": content
+        }
 
     return agent_output
-
+    
 
 @app.get("/api/{agent_name}/tick")
 def agent_tick(agent_name: str):
