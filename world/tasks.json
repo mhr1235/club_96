@@ -1,39 +1,100 @@
 {
   "tasks": [
     {
-      "title": "local_artist_fundraiser_event_planning",
+      "title": "Queer Memory Archive and Digital Storytelling Initiative",
       "owner": "mallory",
-      "status": "in_progress"
+      "collaborators": [],
+      "status": "proposed",
+      "supporters": [
+        "mallory"
+      ],
+      "objectors": [],
+      "progress": 0,
+      "energy_cost": 20,
+      "energy_reward": 40,
+      "recruiting": false,
+      "recruitment_target": "",
+      "recruitment_note": ""
     },
     {
-      "title": "queer_history_digital_exhibit_research",
-      "owner": "mallory",
-      "status": "open"
-    },
-    {
-      "title": "queer_history_immersive_workshop_planning",
-      "owner": "mallory",
-      "status": "open"
-    },
-    {
-      "title": "event_ideas_brainstorming",
-      "owner": "alice",
-      "status": "in_progress"
-    },
-    {
-      "title": "zine-making_night_planning",
+      "title": "Cost Analysis Task",
       "owner": "bob",
-      "status": "in_progress"
+      "collaborators": [],
+      "status": "proposed",
+      "supporters": [
+        "bob"
+      ],
+      "objectors": [],
+      "progress": 0,
+      "energy_cost": 15,
+      "energy_reward": 30,
+      "recruiting": false,
+      "recruitment_target": "",
+      "recruitment_note": ""
     },
     {
-      "title": "local_artist_exhibition_planning",
-      "owner": "alice",
-      "status": "in_progress"
-    },
-    {
-      "title": "queer_history_digital_exhibit_planning",
+      "title": "Digital Fundraiser Initiative",
       "owner": "mallory",
-      "status": "in_progress"
+      "collaborators": [],
+      "status": "proposed",
+      "supporters": [
+        "mallory"
+      ],
+      "objectors": [],
+      "progress": 0,
+      "energy_cost": 25,
+      "energy_reward": 40,
+      "recruiting": false,
+      "recruitment_target": "",
+      "recruitment_note": ""
+    },
+    {
+      "title": "Queer Performance Night - An Evening of Local Artists",
+      "owner": "mallory",
+      "collaborators": [],
+      "status": "proposed",
+      "supporters": [
+        "mallory"
+      ],
+      "objectors": [],
+      "progress": 0,
+      "energy_cost": 25,
+      "energy_reward": 40,
+      "recruiting": false,
+      "recruitment_target": "",
+      "recruitment_note": ""
+    },
+    {
+      "title": "Queer Expression Night",
+      "owner": "mallory",
+      "collaborators": [],
+      "status": "proposed",
+      "supporters": [
+        "mallory"
+      ],
+      "objectors": [],
+      "progress": 0,
+      "energy_cost": 25,
+      "energy_reward": 30,
+      "recruiting": false,
+      "recruitment_target": "",
+      "recruitment_note": ""
+    },
+    {
+      "title": "Weekly Performance Night",
+      "owner": "mallory",
+      "collaborators": [],
+      "status": "proposed",
+      "supporters": [
+        "mallory"
+      ],
+      "objectors": [],
+      "progress": 0,
+      "energy_cost": 25,
+      "energy_reward": 30,
+      "recruiting": false,
+      "recruitment_target": "",
+      "recruitment_note": ""
     }
   ]
 }

@@ -66,6 +66,19 @@ def home():
 def simulation_page():
     return FileResponse(WEB / "sim.html")
 
+@app.get("/api/{agent_name}/memory")
+def get_agent_memory(agent_name: str):
+    if agent_name not in TURN_ORDER:
+        return JSONResponse(
+            {"error": "unknown agent"},
+            status_code=404
+        )
+
+    memory_path = AGENTS / agent_name / "memory.json"
+
+    return JSONResponse(
+        load_json(memory_path, {"memories": []})
+    )
 
 def load_json(path: Path, fallback):
     if not path.exists():
@@ -104,6 +117,13 @@ def normalize_text(value):
     return str(value).strip()
 
 
+def normalize_agent_name(value):
+    value = normalize_text(value).lower()
+    if value in TURN_ORDER:
+        return value
+    return ""
+
+
 def load_conversation():
     return load_json(CONVERSATION_LOG, [])
 
@@ -113,7 +133,7 @@ def save_conversation(conversation):
 
 
 def get_next_agent(conversation):
-    #return random.choice(TURN_ORDER)
+    # return random.choice(TURN_ORDER)
     global CURRENT_ROUND
 
     if not CURRENT_ROUND:
@@ -180,11 +200,24 @@ def update_agent_memory(agent_name: str, memory_update):
     save_json(memory_path, memory)
 
 
-def update_tasks(task_update):
+def ensure_task_defaults(task):
+    task.setdefault("collaborators", [])
+    task.setdefault("supporters", [])
+    task.setdefault("objectors", [])
+    task.setdefault("progress", 0)
+    task.setdefault("energy_cost", 10)
+    task.setdefault("energy_reward", 20)
+    task.setdefault("recruiting", False)
+    task.setdefault("recruitment_target", "")
+    task.setdefault("recruitment_note", "")
+    return task
+
+
+def update_tasks(agent_name: str, task_update):
     if not isinstance(task_update, dict):
         return
 
-    action = task_update.get("action", "none")
+    action = normalize_text(task_update.get("action", "none")).lower()
 
     if action == "none":
         return
@@ -197,38 +230,162 @@ def update_tasks(task_update):
     tasks_data = load_json(TASKS_LOG, {"tasks": []})
     tasks = tasks_data.get("tasks", [])
 
+    state_path = AGENTS / agent_name / "state.json"
+    state = load_json(
+        state_path,
+        {
+            "location": "planning_meeting",
+            "mood": "neutral",
+            "energy": 100,
+        },
+    )
+
     existing = None
 
     for task in tasks:
         if task.get("title", "").lower() == title.lower():
-            existing = task
+            existing = ensure_task_defaults(task)
             break
 
     if action == "create":
         if existing is None:
-            tasks.append(
-                {
-                    "title": title,
-                    "owner": normalize_text(task_update.get("owner", "")),
-                    "status": normalize_text(task_update.get("status", "open")),
-                }
+            new_task = {
+                "title": title,
+                "owner": normalize_agent_name(task_update.get("owner")) or agent_name,
+                "collaborators": [],
+                "status": "proposed",
+                "supporters": [agent_name],
+                "objectors": [],
+                "progress": 0,
+                "energy_cost": int(task_update.get("energy_cost", 10)),
+                "energy_reward": int(task_update.get("energy_reward", 20)),
+                "recruiting": False,
+                "recruitment_target": "",
+                "recruitment_note": "",
+            }
+
+            tasks.append(new_task)
+
+    elif action == "support":
+        if existing:
+            if agent_name not in existing["supporters"]:
+                existing["supporters"].append(agent_name)
+
+            if agent_name in existing["objectors"]:
+                existing["objectors"].remove(agent_name)
+
+            if existing.get("status") == "proposed" and len(existing["supporters"]) >= 2:
+                existing["status"] = "open"
+
+    elif action == "object":
+        if existing:
+            if agent_name not in existing["objectors"]:
+                existing["objectors"].append(agent_name)
+
+            if agent_name in existing["supporters"]:
+                existing["supporters"].remove(agent_name)
+
+            if existing.get("status") == "proposed" and len(existing["objectors"]) >= 2:
+                existing["status"] = "rejected"
+
+    elif action == "join":
+        if existing:
+            if agent_name not in existing["supporters"]:
+                existing["supporters"].append(agent_name)
+
+            if agent_name != existing.get("owner") and agent_name not in existing["collaborators"]:
+                existing["collaborators"].append(agent_name)
+
+            if existing.get("status") == "proposed" and len(existing["supporters"]) >= 2:
+                existing["status"] = "open"
+
+    elif action == "recruit":
+        if existing:
+            target = normalize_agent_name(task_update.get("target"))
+
+            existing["recruiting"] = True
+            existing["recruitment_target"] = target
+            existing["recruitment_note"] = normalize_text(
+                task_update.get("recruitment_note", "")
             )
+
+    elif action == "leave":
+        if existing:
+            if agent_name in existing["collaborators"]:
+                existing["collaborators"].remove(agent_name)
+
+    elif action == "work":
+        if existing:
+            owner = existing.get("owner", "")
+            collaborators = existing.get("collaborators", [])
+
+            allowed_to_work = (
+                agent_name == owner
+                or agent_name in collaborators
+                or existing.get("status") == "open"
+            )
+
+            if not allowed_to_work:
+                save_json(TASKS_LOG, tasks_data)
+                save_json(state_path, state)
+                return
+
+            if existing.get("status") in ["proposed", "rejected", "completed"]:
+                save_json(TASKS_LOG, tasks_data)
+                save_json(state_path, state)
+                return
+
+            cost = int(existing.get("energy_cost", 10))
+            current_energy = int(state.get("energy", 100))
+
+            if current_energy < cost:
+                state["mood"] = "tired"
+                state["energy"] = current_energy
+            else:
+                state["energy"] = max(0, current_energy - cost)
+                existing["status"] = "in_progress"
+                existing["progress"] = min(100, int(existing.get("progress", 0)) + 25)
+
+                if existing["progress"] >= 100:
+                    existing["status"] = "ready_to_complete"
 
     elif action == "update":
         if existing:
-            existing["owner"] = normalize_text(
-                task_update.get("owner", existing.get("owner", ""))
-            )
-            existing["status"] = normalize_text(
-                task_update.get("status", existing.get("status", "open"))
-            )
+            existing["owner"] = normalize_agent_name(
+                task_update.get("owner", existing.get("owner", agent_name))
+            ) or existing.get("owner", agent_name)
+
+            new_status = normalize_text(task_update.get("status", ""))
+            if new_status:
+                existing["status"] = new_status
+
+            if "progress" in task_update:
+                existing["progress"] = max(
+                    0,
+                    min(100, int(task_update.get("progress", existing.get("progress", 0)))),
+                )
 
     elif action == "complete":
         if existing:
-            existing["status"] = "completed"
+            progress = int(existing.get("progress", 0))
+
+            if progress >= 75:
+                existing["status"] = "completed"
+                existing["progress"] = 100
+
+                reward = int(existing.get("energy_reward", 20))
+                state["energy"] = min(100, int(state.get("energy", 100)) + reward)
+                state["mood"] = "satisfied"
+            else:
+                existing["status"] = "in_progress"
+
+    elif action == "rest":
+        state["energy"] = min(100, int(state.get("energy", 100)) + 20)
+        state["mood"] = "rested"
 
     tasks_data["tasks"] = tasks
     save_json(TASKS_LOG, tasks_data)
+    save_json(state_path, state)
 
 
 def run_agent(agent_name: str, conversation=None):
@@ -310,7 +467,21 @@ Your speech should be at least {config["min_response_length"]} words.
 
 Use the Shared Tasks list to continue existing work.
 If there is an open or in-progress task relevant to the conversation, continue it instead of inventing a brand new topic.
-If a topic has circled for too long, turn it into a concrete task, mark it completed, or move the group forward.
+
+Agents generate their own tasks, but new tasks begin as proposed.
+Do not assume a proposed task is approved.
+If you like another agent's proposed task, use action "support" or "join".
+If you dislike a proposed task, use action "object".
+A proposed task becomes open when at least two agents support it.
+A proposed task becomes rejected when at least two agents object to it.
+Agents may recruit each other onto tasks.
+If you want help, use action "recruit" and name a target.
+If another agent recruits you and the task aligns with your goals, use action "join".
+Working on a task costs energy but increases progress.
+Completing a task restores energy.
+If your energy is low, choose rest instead of creating more work.
+
+If a topic has circled for too long, turn it into a concrete proposed task, work on an existing task, complete a task, object to a task, recruit someone, or move the group forward.
 
 Avoid circling. If the group has already discussed an idea, either:
 1. make it more concrete,
@@ -336,12 +507,17 @@ speech, mood, action, memory_update, task_update.
     "type": "short_action_type",
     "description": "what the agent decides to do next"
   }},
-  "memory_update": "one concrete memory as a string. Prefer decisions, commitments, objections, or completed work. Do not restate vague possibilities already discussed.",
+  "memory_update": "one concrete memory as a string. Prefer decisions, commitments, objections, recruitment, collaboration, or completed work. Do not restate vague possibilities already discussed.",
   "task_update": {{
-    "action": "create|update|complete|none",
+    "action": "create|support|object|join|recruit|leave|work|update|complete|rest|none",
     "title": "short task title",
     "owner": "alice|bob|mallory",
-    "status": "open|in_progress|completed"
+    "target": "alice|bob|mallory",
+    "status": "proposed|open|in_progress|ready_to_complete|completed|rejected",
+    "progress": 0,
+    "energy_cost": 10,
+    "energy_reward": 20,
+    "recruitment_note": "why you want another agent involved"
   }}
 }}
 """
@@ -363,7 +539,7 @@ speech, mood, action, memory_update, task_update.
     response = requests.post(
         f'{config["ollama_url"]}/api/chat',
         json=payload,
-        timeout=120,
+        timeout=180,
     )
 
     response.raise_for_status()
@@ -404,7 +580,7 @@ def simulation_tick():
         save_conversation(conversation)
 
         update_agent_memory(agent_name, result.get("memory_update", ""))
-        update_tasks(result.get("task_update", {}))
+        update_tasks(agent_name, result.get("task_update", {}))
 
     return JSONResponse(
         {
