@@ -1,0 +1,19 @@
+{
+  "tasks": [
+    {
+      "title": "local_artist_fundraiser_event_planning",
+      "owner": "mallory",
+      "status": "completed"
+    },
+    {
+      "title": "queer_history_digital_exhibit_research",
+      "owner": "mallory",
+      "status": "open"
+    },
+    {
+      "title": "queer_history_immersive_workshop_planning",
+      "owner": "mallory",
+      "status": "open"
+    }
+  ]
+}
