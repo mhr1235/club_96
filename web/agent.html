@@ -4,80 +4,229 @@
   <meta charset="UTF-8" />
   <title>Agent Dialogue</title>
   <style>
+    @font-face {
+      font-family: "GerardoVelazquez";
+      src: url("/static/fonts/GerardoVela-zquez.woff") format("woff");
+    }
+
+    @font-face {
+      font-family: "ThirdWorldGayRevolution";
+      src: url("/static/fonts/ThirdWorldGayRevolution.woff") format("woff");
+    }
+
+    @font-face {
+      font-family: "Moonstorm";
+      src: url("/static/fonts/Moonstorm.woff") format("woff");
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
     body {
-      font-family: system-ui, sans-serif;
+      height: 100%;
+      margin: 0;
+    }
+
+    body {
       background: #111;
-      color: #f4f4f4;
-      padding: 2rem;
-      max-width: 900px;
-      margin: auto;
-    }
-
-    .entry {
-      border-radius: 16px;
-      padding: 1.25rem;
-      margin-bottom: 1rem;
       color: #111;
+      font-family: system-ui, sans-serif;
+      overflow: hidden;
     }
 
-    .alice { background: #c692e7; }
-    .bob { background: #ffbc61; }
-    .mallory { background: #a8f49c; }
+    main {
+      height: 100vh;
+      overflow: hidden;
+      padding: clamp(1.5rem, 3vw, 3rem);
+    }
+
+    main.alice {
+      background: #c692e7;
+    }
+
+    main.bob {
+      background: #ffbc61;
+    }
+
+    main.mallory {
+      background: #a8f49c;
+    }
+
+    h1 {
+      font-size: clamp(4rem, 8vw, 9rem);
+      line-height: 0.9;
+      margin: 0 0 clamp(1.25rem, 3vw, 2.5rem);
+      text-transform: uppercase;
+    }
+
+    .alice h1,
+    .alice .speech {
+      font-family: "ThirdWorldGayRevolution", system-ui, sans-serif;
+    }
+
+    .bob h1,
+    .bob .speech {
+      font-family: "Moonstorm", system-ui, sans-serif;
+    }
+
+    .mallory h1,
+    .mallory .speech {
+      font-family: "GerardoVelazquez", system-ui, sans-serif;
+    }
 
     .meta {
-      color: rgba(0,0,0,0.65);
-      font-size: 0.85rem;
-      margin-bottom: 0.75rem;
+      color: rgba(255, 255, 255, 0.95);
+      font-size: clamp(1.4rem, 2vw, 2.25rem);
+      line-height: 1.2;
+      margin-bottom: clamp(1.4rem, 3vw, 2.5rem);
     }
 
     .speech {
-      font-size: 1.2rem;
-      line-height: 1.55;
+      color: #111;
+      font-size: clamp(2rem, 3.6vw, 5rem);
+      line-height: 1.25;
+      overflow-wrap: break-word;
+      text-transform: uppercase;
     }
 
-    a { color: #9ad; }
+    .waiting {
+      font-family: system-ui, sans-serif;
+      text-transform: none;
+    }
+
+    .cursor::after {
+      content: "▋";
+      margin-left: 2px;
+      animation: blink 0.8s infinite;
+    }
+
+    @keyframes blink {
+      0%, 50% { opacity: 1; }
+      51%, 100% { opacity: 0; }
+    }
   </style>
 </head>
 
 <body>
-  <!-- <p><a href="/sim">Back to simulation</a></p> -->
-
-  <h1 id="title">Agent Dialogue</h1>
-  <div id="dialogue"></div>
+  <main id="page" class="">
+    <h1 id="agent-name">Agent</h1>
+    <div id="meta" class="meta">Waiting for output.</div>
+    <div id="speech" class="speech waiting">Start or advance the simulation to update this display.</div>
+  </main>
 
   <script>
-    const pathParts = window.location.pathname.split("/");
-    const agentName = pathParts[pathParts.length - 1];
+    const pollIntervalMs = 1500;
+    let latestTurnKey = "";
+    let isTyping = false;
 
-    document.getElementById("title").textContent =
-      `${agentName.charAt(0).toUpperCase() + agentName.slice(1)} Dialogue`;
+    function titleize(value) {
+      return value.charAt(0).toUpperCase() + value.slice(1);
+    }
 
-  async function loadAgentDialogue() {
-  const response = await fetch("/api/sim/conversation", {
-    cache: "no-store"
-  });
+    function setText(id, value) {
+      document.getElementById(id).textContent = value;
+    }
 
-  const conversation = await response.json();
+    function getDisplayFontSize() {
+      const widthSize = window.innerWidth * 0.036;
+      return Math.max(32, Math.min(widthSize, 80));
+    }
 
-  const filtered = conversation.filter(entry => entry.speaker === agentName);
-  const container = document.getElementById("dialogue");
+    function fitSpeechToViewport() {
+      const speech = document.getElementById("speech");
+      const styles = getComputedStyle(document.getElementById("page"));
+      const bottomPadding = parseFloat(styles.paddingBottom) || 0;
+      const availableHeight = window.innerHeight - speech.offsetTop - bottomPadding - 12;
+      const maxSize = getDisplayFontSize();
+      const minSize = 20;
 
-  if (filtered.length === 0) {
-    container.innerHTML = `<p>No dialogue yet for ${agentName}.</p>`;
-    return;
-  }
+      speech.style.fontSize = `${maxSize}px`;
 
-  const latest = filtered[filtered.length - 1];
+      let size = maxSize;
+      while (speech.scrollHeight > availableHeight && size > minSize) {
+        size -= 2;
+        speech.style.fontSize = `${size}px`;
+      }
+    }
 
-  container.innerHTML = `
-    <div class="entry ${latest.speaker}">
-      <div class="meta">Turn ${latest.turn} · Mood: ${latest.mood || "—"}</div>
-      <div class="speech">${latest.speech || "No speech returned."}</div>
-    </div>
-  `;
-}
+    function setSpeech(value) {
+      setText("speech", value);
+      requestAnimationFrame(fitSpeechToViewport);
+    }
+
+    function typeText(element, text, speed = 18) {
+      element.textContent = "";
+      element.classList.add("cursor");
+      isTyping = true;
+
+      let index = 0;
+
+      function typeNextCharacter() {
+        if (index < text.length) {
+          element.textContent += text[index];
+          index++;
+          requestAnimationFrame(fitSpeechToViewport);
+          setTimeout(typeNextCharacter, speed);
+        } else {
+          element.classList.remove("cursor");
+          isTyping = false;
+        }
+      }
+
+      typeNextCharacter();
+    }
+
+    function typeSpeech(value) {
+      const speech = document.getElementById("speech");
+      typeText(speech, value);
+    }
+
+    async function loadAgentDialogue() {
+      if (isTyping) {
+        return;
+      }
+
+      const pathParts = window.location.pathname.split("/");
+      const agentName = pathParts[pathParts.length - 1];
+
+      const response = await fetch("/api/sim/conversation", {
+        cache: "no-store"
+      });
+      const conversation = await response.json();
+      const filtered = conversation.filter(entry => entry.speaker === agentName);
+      const latest = filtered[filtered.length - 1];
+
+      document.title = `${titleize(agentName)} Dialogue`;
+      document.getElementById("page").className = agentName;
+      setText("agent-name", titleize(agentName));
+
+      if (!latest) {
+        setText("meta", "Waiting for output.");
+        document.getElementById("speech").classList.add("waiting");
+        setSpeech(`No dialogue yet for ${titleize(agentName)}.`);
+        return;
+      }
+
+      const turnKey = `${latest.turn}:${latest.speech}`;
+      if (turnKey === latestTurnKey) {
+        return;
+      }
+
+      latestTurnKey = turnKey;
+      setText("meta", `Turn ${latest.turn} · Mood: ${latest.mood || "—"}`);
+      document.getElementById("speech").classList.remove("waiting");
+      typeSpeech(latest.speech || "No speech returned.");
+    }
 
     loadAgentDialogue();
+    setInterval(loadAgentDialogue, pollIntervalMs);
+    window.addEventListener("resize", fitSpeechToViewport);
+
+    if (document.fonts) {
+      document.fonts.ready.then(fitSpeechToViewport);
+    }
   </script>
 </body>
 </html>

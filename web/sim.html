@@ -199,6 +199,7 @@
 
   <script>
     let latestConversationKey = "";
+    let isTyping = false;
 
     function getConversationKey(conversation) {
       if (!conversation || conversation.length === 0) {
@@ -212,6 +213,7 @@
     function typeText(element, text, speed = 18) {
       element.textContent = "";
       element.classList.add("cursor");
+      isTyping = true;
 
       let index = 0;
 
@@ -222,6 +224,7 @@
           setTimeout(typeNextCharacter, speed);
         } else {
           element.classList.remove("cursor");
+          isTyping = false;
         }
       }
 
@@ -279,6 +282,10 @@ function renderConversation(conversation, animateLast = false) {
   });
 }
     async function loadConversation(onlyIfChanged = false) {
+      if (isTyping && onlyIfChanged) {
+        return false;
+      }
+
       const response = await fetch("/api/sim/conversation", {
         cache: "no-store"
       });
@@ -307,7 +314,6 @@ function renderConversation(conversation, animateLast = false) {
           renderConversation(data.conversation, true);
         }
 
-        await loadConversation(false);
         document.getElementById("status").textContent = `Finished ${data.agent}.`;
       } catch (error) {
         document.getElementById("status").textContent = `Error: ${error}`;
@@ -322,7 +328,6 @@ function renderConversation(conversation, animateLast = false) {
       for (let i = 0; i < 3; i++) {
         document.getElementById("status").textContent = `Running turn ${i + 1} of 3...`;
         await advanceSimulation();
-        await loadConversation(false);
       }
 
       document.getElementById("status").textContent = "Finished three turns.";

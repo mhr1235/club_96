@@ -426,7 +426,9 @@
     {
       "title": "Curate Local Artists",
       "owner": "mallory",
-      "collaborators": [],
+      "collaborators": [
+        "bob"
+      ],
       "status": "open",
       "supporters": [
         "mallory",
@@ -458,6 +460,73 @@
     },
     {
       "title": "Design Accessible Spaces",
+      "owner": "mallory",
+      "collaborators": [
+        "bob"
+      ],
+      "status": "open",
+      "supporters": [
+        "mallory",
+        "bob"
+      ],
+      "objectors": [],
+      "progress": 0,
+      "energy_cost": 25,
+      "energy_reward": 35,
+      "recruiting": false,
+      "recruitment_target": "",
+      "recruitment_note": ""
+    },
+    {
+      "title": "Draw Up Accessibility Blueprint",
+      "owner": "mallory",
+      "collaborators": [],
+      "status": "proposed",
+      "supporters": [
+        "mallory"
+      ],
+      "objectors": [],
+      "progress": 0,
+      "energy_cost": 25,
+      "energy_reward": 35,
+      "recruiting": false,
+      "recruitment_target": "",
+      "recruitment_note": ""
+    },
+    {
+      "title": "Research Quiet Room & Neurodiversity Accommodations",
+      "owner": "alice",
+      "collaborators": [],
+      "status": "proposed",
+      "supporters": [
+        "alice"
+      ],
+      "objectors": [],
+      "progress": 0,
+      "energy_cost": 15,
+      "energy_reward": 25,
+      "recruiting": false,
+      "recruitment_target": "",
+      "recruitment_note": ""
+    },
+    {
+      "title": "Queer Voices Exhibition",
+      "owner": "alice",
+      "collaborators": [],
+      "status": "proposed",
+      "supporters": [
+        "alice"
+      ],
+      "objectors": [],
+      "progress": 0,
+      "energy_cost": 20,
+      "energy_reward": 30,
+      "recruiting": false,
+      "recruitment_target": "",
+      "recruitment_note": ""
+    },
+    {
+      "title": "Research Queer Artists and Performers",
       "owner": "mallory",
       "collaborators": [],
       "status": "proposed",
