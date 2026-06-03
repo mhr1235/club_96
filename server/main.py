@@ -20,6 +20,7 @@ WORLD_STATE_LOG = WORLD / "worldState.json"
 TURN_ORDER = ["alice", "bob", "mallory"]
 
 CURRENT_ROUND = []
+ACTIVE_AGENT = ""
 
 WEAK_MEMORY_PHRASES = [
     "noted potential benefits",
@@ -572,35 +573,50 @@ speech, mood, action, memory_update, task_update.
 
 @app.get("/api/{agent_name}/tick")
 def agent_tick(agent_name: str):
+    global ACTIVE_AGENT
+
     conversation = load_conversation()
-    result = run_agent(agent_name, conversation)
+    ACTIVE_AGENT = agent_name
+
+    try:
+        result = run_agent(agent_name, conversation)
+    finally:
+        ACTIVE_AGENT = ""
+
     status = 404 if "error" in result else 200
     return JSONResponse(result, status_code=status)
 
 
 @app.post("/api/sim/tick")
 def simulation_tick():
+    global ACTIVE_AGENT
+
     conversation = load_conversation()
     agent_name = get_next_agent(conversation)
 
-    result = run_agent(agent_name, conversation)
+    ACTIVE_AGENT = agent_name
 
-    if "error" not in result:
-        entry = {
-            "turn": len(conversation) + 1,
-            "speaker": agent_name,
-            "speech": normalize_text(result.get("speech", "")),
-            "mood": normalize_text(result.get("mood", "")),
-            "action": result.get("action", {}),
-            "memory_update": normalize_text(result.get("memory_update", "")),
-            "task_update": result.get("task_update", {}),
-        }
+    try:
+        result = run_agent(agent_name, conversation)
 
-        conversation.append(entry)
-        save_conversation(conversation)
+        if "error" not in result:
+            entry = {
+                "turn": len(conversation) + 1,
+                "speaker": agent_name,
+                "speech": normalize_text(result.get("speech", "")),
+                "mood": normalize_text(result.get("mood", "")),
+                "action": result.get("action", {}),
+                "memory_update": normalize_text(result.get("memory_update", "")),
+                "task_update": result.get("task_update", {}),
+            }
 
-        update_agent_memory(agent_name, result.get("memory_update", ""))
-        update_tasks(agent_name, result.get("task_update", {}))
+            conversation.append(entry)
+            save_conversation(conversation)
+
+            update_agent_memory(agent_name, result.get("memory_update", ""))
+            update_tasks(agent_name, result.get("task_update", {}))
+    finally:
+        ACTIVE_AGENT = ""
 
     return JSONResponse(
         {
@@ -615,6 +631,11 @@ def simulation_tick():
 @app.get("/api/sim/conversation")
 def get_conversation():
     return JSONResponse(load_conversation())
+
+
+@app.get("/api/sim/status")
+def get_sim_status():
+    return JSONResponse({"active_agent": ACTIVE_AGENT})
 
 
 @app.get("/api/sim/tasks")

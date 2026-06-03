@@ -40,6 +40,7 @@
       height: 100vh;
       overflow: hidden;
       padding: clamp(1.5rem, 3vw, 3rem);
+      position: relative;
     }
 
     main.alice {
@@ -91,6 +92,30 @@
       text-transform: uppercase;
     }
 
+    .speech-shell {
+      position: relative;
+    }
+
+    .spiral-canvas {
+      inset: 0;
+      opacity: 0;
+      pointer-events: none;
+      position: absolute;
+      transition: opacity 180ms ease;
+      transform-origin: center;
+      width: 100%;
+      height: 100%;
+    }
+
+    .thinking .speech {
+      opacity: 0.28;
+    }
+
+    .thinking .spiral-canvas {
+      animation: spiralSpin 2.8s linear infinite;
+      opacity: 1;
+    }
+
     .waiting {
       font-family: system-ui, sans-serif;
       text-transform: none;
@@ -106,6 +131,20 @@
       0%, 50% { opacity: 1; }
       51%, 100% { opacity: 0; }
     }
+
+    @keyframes spiralSpin {
+      0% {
+        transform: rotate(0deg) scaleX(1) scaleY(1);
+      }
+
+      50% {
+        transform: rotate(180deg) scaleX(1.08) scaleY(0.92);
+      }
+
+      100% {
+        transform: rotate(360deg) scaleX(1) scaleY(1);
+      }
+    }
   </style>
 </head>
 
@@ -113,13 +152,19 @@
   <main id="page" class="">
     <h1 id="agent-name">Agent</h1>
     <div id="meta" class="meta">Waiting for output.</div>
-    <div id="speech" class="speech waiting">Start or advance the simulation to update this display.</div>
+    <div class="speech-shell">
+      <div id="speech" class="speech waiting">Start or advance the simulation to update this display.</div>
+      <canvas id="spiral" class="spiral-canvas"></canvas>
+    </div>
   </main>
 
   <script>
     const pollIntervalMs = 1500;
     let latestTurnKey = "";
     let isTyping = false;
+    let isThinking = false;
+    let spiralFrameId = 0;
+    let spiralIsAnimating = false;
 
     function titleize(value) {
       return value.charAt(0).toUpperCase() + value.slice(1);
@@ -156,6 +201,100 @@
       requestAnimationFrame(fitSpeechToViewport);
     }
 
+    function resizeSpiralCanvas() {
+      const canvas = document.getElementById("spiral");
+      const rect = canvas.getBoundingClientRect();
+      const scale = window.devicePixelRatio || 1;
+      canvas.width = Math.max(1, Math.floor(rect.width * scale));
+      canvas.height = Math.max(1, Math.floor(rect.height * scale));
+    }
+
+    function drawSpiralText(time = 0) {
+      if (!isThinking) {
+        spiralIsAnimating = false;
+        return;
+      }
+
+      spiralIsAnimating = true;
+
+      const canvas = document.getElementById("spiral");
+      const speech = document.getElementById("speech");
+      const context = canvas.getContext("2d");
+      const rect = canvas.getBoundingClientRect();
+      const scale = window.devicePixelRatio || 1;
+      const text = speech.textContent || "";
+      const styles = getComputedStyle(speech);
+      const fontSize = parseFloat(styles.fontSize) || 48;
+      const fontFamily = styles.fontFamily || "system-ui, sans-serif";
+
+      if (canvas.width !== Math.floor(rect.width * scale) || canvas.height !== Math.floor(rect.height * scale)) {
+        resizeSpiralCanvas();
+      }
+
+      context.setTransform(scale, 0, 0, scale, 0, 0);
+      context.clearRect(0, 0, rect.width, rect.height);
+      context.fillStyle = "#111";
+      context.font = `${fontSize}px ${fontFamily}`;
+      context.textBaseline = "middle";
+
+      const compactText = text.replace(/\s+/g, " ").trim() || "thinking";
+      const centerX = rect.width * 0.5;
+      const centerY = rect.height * 0.48;
+      const maxRadius = Math.hypot(rect.width, rect.height) * 0.46;
+      const chars = compactText.repeat(8);
+      const spin = time * 0.0006;
+
+      for (let i = 0; i < chars.length; i++) {
+        const t = i / Math.max(1, chars.length - 1);
+        const angle = t * Math.PI * 9 + spin;
+        const radius = 18 + t * maxRadius;
+        const wobble = Math.sin(time * 0.004 + i * 0.7) * 10;
+        const x = centerX + Math.cos(angle) * (radius + wobble);
+        const y = centerY + Math.sin(angle) * radius * 0.6;
+
+        context.save();
+        context.translate(x, y);
+        context.rotate(angle + Math.PI / 2);
+        context.scale(1 + Math.sin(time * 0.003 + i) * 0.35, 0.75 + Math.cos(time * 0.004 + i) * 0.2);
+        context.fillText(chars[i], 0, 0);
+        context.restore();
+      }
+
+      spiralFrameId = requestAnimationFrame(drawSpiralText);
+    }
+
+    function startSpiralAnimation() {
+      if (spiralIsAnimating) {
+        return;
+      }
+
+      resizeSpiralCanvas();
+      spiralFrameId = requestAnimationFrame(drawSpiralText);
+    }
+
+    function setThinking(nextIsThinking) {
+      if (isThinking === nextIsThinking) {
+        if (isThinking) {
+          startSpiralAnimation();
+        }
+
+        return;
+      }
+
+      isThinking = nextIsThinking;
+      document.getElementById("page").classList.toggle("thinking", isThinking);
+
+      if (isThinking) {
+        startSpiralAnimation();
+      } else {
+        cancelAnimationFrame(spiralFrameId);
+        spiralIsAnimating = false;
+        const canvas = document.getElementById("spiral");
+        const context = canvas.getContext("2d");
+        context.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    }
+
     function typeText(element, text, speed = 18) {
       element.textContent = "";
       element.classList.add("cursor");
@@ -172,6 +311,7 @@
         } else {
           element.classList.remove("cursor");
           isTyping = false;
+          loadThinkingStatus();
         }
       }
 
@@ -199,7 +339,7 @@
       const latest = filtered[filtered.length - 1];
 
       document.title = `${titleize(agentName)} Dialogue`;
-      document.getElementById("page").className = agentName;
+      document.getElementById("page").className = `${agentName}${isThinking ? " thinking" : ""}`;
       setText("agent-name", titleize(agentName));
 
       if (!latest) {
@@ -220,9 +360,23 @@
       typeSpeech(latest.speech || "No speech returned.");
     }
 
+    async function loadThinkingStatus() {
+      const pathParts = window.location.pathname.split("/");
+      const agentName = pathParts[pathParts.length - 1];
+      const response = await fetch("/api/sim/status", {
+        cache: "no-store"
+      });
+      const status = await response.json();
+
+      setThinking(status.active_agent === agentName && !isTyping);
+    }
+
     loadAgentDialogue();
+    loadThinkingStatus();
     setInterval(loadAgentDialogue, pollIntervalMs);
+    setInterval(loadThinkingStatus, 500);
     window.addEventListener("resize", fitSpeechToViewport);
+    window.addEventListener("resize", resizeSpiralCanvas);
 
     if (document.fonts) {
       document.fonts.ready.then(fitSpeechToViewport);

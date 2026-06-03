@@ -540,6 +540,39 @@
       "recruiting": false,
       "recruitment_target": "",
       "recruitment_note": ""
+    },
+    {
+      "title": "Research Inclusive Performances",
+      "owner": "mallory",
+      "collaborators": [],
+      "status": "proposed",
+      "supporters": [
+        "mallory"
+      ],
+      "objectors": [],
+      "progress": 0,
+      "energy_cost": 25,
+      "energy_reward": 35,
+      "recruiting": false,
+      "recruitment_target": "",
+      "recruitment_note": ""
+    },
+    {
+      "title": "Research Inclusive Performances - Initial Performer List",
+      "owner": "mallory",
+      "collaborators": [],
+      "status": "open",
+      "supporters": [
+        "alice",
+        "mallory"
+      ],
+      "objectors": [],
+      "progress": 0,
+      "energy_cost": 25,
+      "energy_reward": 35,
+      "recruiting": false,
+      "recruitment_target": "",
+      "recruitment_note": ""
     }
   ]
 }
