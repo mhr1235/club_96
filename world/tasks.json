@@ -287,6 +287,190 @@
       "recruiting": false,
       "recruitment_target": "",
       "recruitment_note": ""
+    },
+    {
+      "title": "Curate Interactive Art Installations for 'Queer Pulse'",
+      "owner": "alice",
+      "collaborators": [],
+      "status": "open",
+      "supporters": [
+        "alice",
+        "bob"
+      ],
+      "objectors": [],
+      "progress": 0,
+      "energy_cost": 15,
+      "energy_reward": 25,
+      "recruiting": false,
+      "recruitment_target": "",
+      "recruitment_note": ""
+    },
+    {
+      "title": "Research Interactive Art Installations",
+      "owner": "alice",
+      "collaborators": [
+        "mallory"
+      ],
+      "status": "open",
+      "supporters": [
+        "alice",
+        "mallory"
+      ],
+      "objectors": [],
+      "progress": 0,
+      "energy_cost": 15,
+      "energy_reward": 25,
+      "recruiting": false,
+      "recruitment_target": "",
+      "recruitment_note": ""
+    },
+    {
+      "title": "Research Interactive Art Installations - Phase 2",
+      "owner": "alice",
+      "collaborators": [],
+      "status": "proposed",
+      "supporters": [
+        "alice"
+      ],
+      "objectors": [],
+      "progress": 0,
+      "energy_cost": 15,
+      "energy_reward": 25,
+      "recruiting": false,
+      "recruitment_target": "",
+      "recruitment_note": ""
+    },
+    {
+      "title": "Host Open Mic Night",
+      "owner": "bob",
+      "collaborators": [],
+      "status": "proposed",
+      "supporters": [
+        "bob"
+      ],
+      "objectors": [],
+      "progress": 0,
+      "energy_cost": 10,
+      "energy_reward": 20,
+      "recruiting": false,
+      "recruitment_target": "",
+      "recruitment_note": ""
+    },
+    {
+      "title": "Research Projection Mapping Artists",
+      "owner": "alice",
+      "collaborators": [
+        "bob"
+      ],
+      "status": "open",
+      "supporters": [
+        "alice",
+        "bob"
+      ],
+      "objectors": [],
+      "progress": 0,
+      "energy_cost": 15,
+      "energy_reward": 25,
+      "recruiting": false,
+      "recruitment_target": "",
+      "recruitment_note": ""
+    },
+    {
+      "title": "Research Projection Mapping Artists for Open Mic Night",
+      "owner": "mallory",
+      "collaborators": [],
+      "status": "proposed",
+      "supporters": [
+        "mallory"
+      ],
+      "objectors": [],
+      "progress": 0,
+      "energy_cost": 15,
+      "energy_reward": 25,
+      "recruiting": false,
+      "recruitment_target": "",
+      "recruitment_note": ""
+    },
+    {
+      "title": "Research Projection Mapping Artists for Combined Open Mic and Interactive Installation Event",
+      "owner": "mallory",
+      "collaborators": [],
+      "status": "proposed",
+      "supporters": [
+        "mallory"
+      ],
+      "objectors": [],
+      "progress": 0,
+      "energy_cost": 15,
+      "energy_reward": 25,
+      "recruiting": false,
+      "recruitment_target": "",
+      "recruitment_note": ""
+    },
+    {
+      "title": "Commission Projection Mapping Piece",
+      "owner": "mallory",
+      "collaborators": [],
+      "status": "proposed",
+      "supporters": [
+        "mallory"
+      ],
+      "objectors": [],
+      "progress": 0,
+      "energy_cost": 25,
+      "energy_reward": 35,
+      "recruiting": false,
+      "recruitment_target": "",
+      "recruitment_note": ""
+    },
+    {
+      "title": "Curate Local Artists",
+      "owner": "mallory",
+      "collaborators": [],
+      "status": "open",
+      "supporters": [
+        "mallory",
+        "bob"
+      ],
+      "objectors": [],
+      "progress": 0,
+      "energy_cost": 25,
+      "energy_reward": 35,
+      "recruiting": false,
+      "recruitment_target": "",
+      "recruitment_note": ""
+    },
+    {
+      "title": "Research Accessibility Features",
+      "owner": "alice",
+      "collaborators": [],
+      "status": "proposed",
+      "supporters": [
+        "alice"
+      ],
+      "objectors": [],
+      "progress": 0,
+      "energy_cost": 15,
+      "energy_reward": 25,
+      "recruiting": false,
+      "recruitment_target": "",
+      "recruitment_note": ""
+    },
+    {
+      "title": "Design Accessible Spaces",
+      "owner": "mallory",
+      "collaborators": [],
+      "status": "proposed",
+      "supporters": [
+        "mallory"
+      ],
+      "objectors": [],
+      "progress": 0,
+      "energy_cost": 25,
+      "energy_reward": 35,
+      "recruiting": false,
+      "recruitment_target": "",
+      "recruitment_note": ""
     }
   ]
 }

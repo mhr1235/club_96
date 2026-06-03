@@ -167,6 +167,15 @@
     a {
       color: #9ad;
     }
+
+    .entry h2 a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .entry h2 a:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
@@ -189,6 +198,17 @@
   
 
   <script>
+    let latestConversationKey = "";
+
+    function getConversationKey(conversation) {
+      if (!conversation || conversation.length === 0) {
+        return "empty";
+      }
+
+      const latest = conversation[conversation.length - 1];
+      return `${conversation.length}:${latest.turn}:${latest.speaker}:${latest.speech}`;
+    }
+
     function typeText(element, text, speed = 18) {
       element.textContent = "";
       element.classList.add("cursor");
@@ -210,10 +230,11 @@
 
 function renderConversation(conversation, animateLast = false) {
   const container = document.getElementById("conversation");
+  latestConversationKey = getConversationKey(conversation);
 
   if (!conversation || conversation.length === 0) {
     container.innerHTML = `
-      <div class="entry ${entry.speaker}">
+      <div class="entry">
         <h2>No conversation yet</h2>
         <div class="speech">Click “Advance Simulation” to begin.</div>
       </div>
@@ -227,7 +248,7 @@ function renderConversation(conversation, animateLast = false) {
 
     return `
      <div class="entry ${entry.speaker}">
-        <h2>${entry.speaker}</h2>
+        <h2><a href="/agents/${entry.speaker}">${entry.speaker}</a></h2>
         <div class="meta">Turn ${entry.turn} · Mood: ${entry.mood || "—"}</div>
 
         <div class="speech" id="${isLast ? "latest-speech" : ""}">
@@ -257,14 +278,23 @@ function renderConversation(conversation, animateLast = false) {
     behavior: "smooth"
   });
 }
-    async function loadConversation() {
-      const response = await fetch("/api/sim/conversation");
+    async function loadConversation(onlyIfChanged = false) {
+      const response = await fetch("/api/sim/conversation", {
+        cache: "no-store"
+      });
       const conversation = await response.json();
+
+      if (onlyIfChanged && getConversationKey(conversation) === latestConversationKey) {
+        return false;
+      }
+
       renderConversation(conversation, false);
+      return true;
     }
 
     async function advanceSimulation() {
       document.getElementById("status").textContent = "Advancing simulation...";
+      const pollWhileRunning = setInterval(() => loadConversation(true), 1000);
 
       try {
         const response = await fetch("/api/sim/tick", {
@@ -273,10 +303,16 @@ function renderConversation(conversation, animateLast = false) {
 
         const data = await response.json();
 
-        renderConversation(data.conversation, true);
+        if (data.conversation) {
+          renderConversation(data.conversation, true);
+        }
+
+        await loadConversation(false);
         document.getElementById("status").textContent = `Finished ${data.agent}.`;
       } catch (error) {
         document.getElementById("status").textContent = `Error: ${error}`;
+      } finally {
+        clearInterval(pollWhileRunning);
       }
     }
 
@@ -284,7 +320,9 @@ function renderConversation(conversation, animateLast = false) {
       document.getElementById("status").textContent = "Running three turns...";
 
       for (let i = 0; i < 3; i++) {
+        document.getElementById("status").textContent = `Running turn ${i + 1} of 3...`;
         await advanceSimulation();
+        await loadConversation(false);
       }
 
       document.getElementById("status").textContent = "Finished three turns.";
@@ -304,7 +342,7 @@ function renderConversation(conversation, animateLast = false) {
     }
 
     loadConversation();
+    setInterval(() => loadConversation(true), 1500);
   </script>
 </body>
 </html>
-

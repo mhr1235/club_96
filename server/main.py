@@ -80,6 +80,14 @@ def get_agent_memory(agent_name: str):
         load_json(memory_path, {"memories": []})
     )
 
+@app.get("/agent/{agent_name}")
+def agent_dialogue_page(agent_name: str):
+    if agent_name not in TURN_ORDER:
+        return JSONResponse({"error": "unknown agent"}, status_code=404)
+
+    return FileResponse(WEB / "agent.html")
+
+    
 def load_json(path: Path, fallback):
     if not path.exists():
         return fallback

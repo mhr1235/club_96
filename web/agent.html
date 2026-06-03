@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Agent Dialogue</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #111;
+      color: #f4f4f4;
+      padding: 2rem;
+      max-width: 900px;
+      margin: auto;
+    }
+
+    .entry {
+      border-radius: 16px;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+      color: #111;
+    }
+
+    .alice { background: #c692e7; }
+    .bob { background: #ffbc61; }
+    .mallory { background: #a8f49c; }
+
+    .meta {
+      color: rgba(0,0,0,0.65);
+      font-size: 0.85rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .speech {
+      font-size: 1.2rem;
+      line-height: 1.55;
+    }
+
+    a { color: #9ad; }
+  </style>
+</head>
+
+<body>
+  <!-- <p><a href="/sim">Back to simulation</a></p> -->
+
+  <h1 id="title">Agent Dialogue</h1>
+  <div id="dialogue"></div>
+
+  <script>
+    const pathParts = window.location.pathname.split("/");
+    const agentName = pathParts[pathParts.length - 1];
+
+    document.getElementById("title").textContent =
+      `${agentName.charAt(0).toUpperCase() + agentName.slice(1)} Dialogue`;
+
+  async function loadAgentDialogue() {
+  const response = await fetch("/api/sim/conversation", {
+    cache: "no-store"
+  });
+
+  const conversation = await response.json();
+
+  const filtered = conversation.filter(entry => entry.speaker === agentName);
+  const container = document.getElementById("dialogue");
+
+  if (filtered.length === 0) {
+    container.innerHTML = `<p>No dialogue yet for ${agentName}.</p>`;
+    return;
+  }
+
+  const latest = filtered[filtered.length - 1];
+
+  container.innerHTML = `
+    <div class="entry ${latest.speaker}">
+      <div class="meta">Turn ${latest.turn} · Mood: ${latest.mood || "—"}</div>
+      <div class="speech">${latest.speech || "No speech returned."}</div>
+    </div>
+  `;
+}
+
+    loadAgentDialogue();
+  </script>
+</body>
+</html>
