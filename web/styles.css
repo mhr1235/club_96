@@ -1,0 +1,86 @@
+:root {
+  --font-base: system-ui, sans-serif;
+  --font-alice: "ThirdWorldGayRevolution", system-ui, sans-serif;
+  --font-bob: "Moonstorm", system-ui, sans-serif;
+  --font-mallory: "GerardoVelazquez", system-ui, sans-serif;
+
+  --color-page-bg: #111;
+  --color-page-text: #f4f4f4;
+  --color-muted: #aaa;
+  --color-link: #9ad;
+  --color-panel-bg: #1c1c1c;
+  --color-border: #444;
+  --color-code-bg: #000;
+  --color-code-text: #d6d6d6;
+  --color-code-border: #222;
+  --color-agent-text: #111;
+  --color-agent-meta: rgba(255, 255, 255, 0.95);
+
+  --color-alice: #c692e7;
+  --color-bob: #ffbc61;
+  --color-mallory: #a8f49c;
+  --color-danger: #5a1a1a;
+}
+
+@font-face {
+  font-family: "GerardoVelazquez";
+  src: url("/static/fonts/GerardoVela-zquez.woff") format("woff");
+}
+
+@font-face {
+  font-family: "ThirdWorldGayRevolution";
+  src: url("/static/fonts/ThirdWorldGayRevolution.woff") format("woff");
+}
+
+@font-face {
+  font-family: "Moonstorm";
+  src: url("/static/fonts/Moonstorm.woff") format("woff");
+}
+
+body {
+  background: var(--color-page-bg);
+  font-family: var(--font-base);
+}
+
+a {
+  color: var(--color-link);
+}
+
+.alice,
+.entry.alice,
+main.alice {
+  background: var(--color-alice);
+  color: var(--color-agent-text);
+}
+
+.bob,
+.entry.bob,
+main.bob {
+  background: var(--color-bob);
+  color: var(--color-agent-text);
+}
+
+.mallory,
+.entry.mallory,
+main.mallory {
+  background: var(--color-mallory);
+  color: var(--color-agent-text);
+}
+
+.alice h1,
+.alice h2,
+.alice .speech {
+  font-family: var(--font-alice);
+}
+
+.bob h1,
+.bob h2,
+.bob .speech {
+  font-family: var(--font-bob);
+}
+
+.mallory h1,
+.mallory h2,
+.mallory .speech {
+  font-family: var(--font-mallory);
+}

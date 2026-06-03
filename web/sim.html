@@ -3,23 +3,22 @@
 <head>
   <meta charset="UTF-8" />
   <title>Club 96 Simulation</title>
+  <link rel="stylesheet" href="/static/styles.css" />
   <style>
     pre {
   white-space: pre-wrap;
-  background: #000;
-  color: #d6d6d6;
+  background: var(--color-code-bg);
+  color: var(--color-code-text);
   padding: 1rem;
   border-radius: 12px;
   overflow-x: auto;
-  border: 1px solid #222;
+  border: 1px solid var(--color-code-border);
   font-size: 0.9rem;
 }
 
 
     body {
-      font-family: system-ui, sans-serif;
-      background: #111;
-      color: #f4f4f4;
+      color: var(--color-page-text);
       padding: 2rem;
       max-width: 1000px;
       margin: auto;
@@ -30,7 +29,7 @@
     }
 
     .subtitle {
-      color: #aaa;
+      color: var(--color-muted);
       margin-bottom: 1.5rem;
     }
 
@@ -50,12 +49,12 @@
     }
 
     button.danger {
-      background: #5a1a1a;
+      background: var(--color-danger);
       color: white;
     }
 
     .status {
-      color: #aaa;
+      color: var(--color-muted);
       margin: 1rem 0;
     }
 
@@ -67,10 +66,10 @@
     }
 
     .entry {
-      border: 1px solid #444;
+      border: 1px solid var(--color-border);
       border-radius: 16px;
       padding: 1.25rem;
-      background: #1c1c1c;
+      background: var(--color-panel-bg);
     }
 
     .entry h2 {
@@ -79,60 +78,6 @@
       font-size: 2rem;
 
     }
-
-    @font-face {
-  font-family: "GerardoVelazquez";
-  src: url("/static/fonts/GerardoVela-zquez.woff") format("woff");
-}
-
-@font-face {
-  font-family: "ThirdWorldGayRevolution";
-  src: url("/static/fonts/ThirdWorldGayRevolution.woff") format("woff");
-}
-
-@font-face {
-  font-family: "Moonstorm";
-  src: url("/static/fonts/Moonstorm.woff") format("woff");
-}
-
-.entry.alice {
-  background: #c692e7;
-  color: #111;
-}
-
-.entry.bob {
-  background: #ffbc61;
-  color: #111;
-}
-
-.entry.mallory {
-  background: #a8f49c;
-  color: #111;
-}
-
-.entry.alice h2 {
-  font-family: "ThirdWorldGayRevolution", system-ui, sans-serif;
-}
-
-.entry.bob h2 {
-  font-family: "Moonstorm", system-ui, sans-serif;
-}
-
-.entry.mallory h2 {
-  font-family: "GerardoVelazquez", system-ui, sans-serif;
-}
-
-.entry.alice .speech {
-  font-family: "ThirdWorldGayRevolution", system-ui, sans-serif;
-}
-
-.entry.bob .speech {
-  font-family: "Moonstorm", system-ui, sans-serif;
-}
-
-.entry.mallory .speech {
-  font-family: "GerardoVelazquez", system-ui, sans-serif;
-}
 
     .meta {
       color: rgba(255,255,255,0.9);
@@ -154,7 +99,7 @@
 
     h1{
 
-        font-family: "GerardoVelazquez", system-ui, sans-serif;
+        font-family: var(--font-mallory);
         color: red;
 
     }
@@ -162,10 +107,6 @@
     @keyframes blink {
       0%, 50% { opacity: 1; }
       51%, 100% { opacity: 0; }
-    }
-
-    a {
-      color: #9ad;
     }
 
     .entry h2 a {

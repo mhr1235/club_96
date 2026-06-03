@@ -573,6 +573,22 @@
       "recruiting": false,
       "recruitment_target": "",
       "recruitment_note": ""
+    },
+    {
+      "title": "Research Queer Artists and Performers Showcase",
+      "owner": "mallory",
+      "collaborators": [],
+      "status": "proposed",
+      "supporters": [
+        "mallory"
+      ],
+      "objectors": [],
+      "progress": 0,
+      "energy_cost": 30,
+      "energy_reward": 40,
+      "recruiting": false,
+      "recruitment_target": "",
+      "recruitment_note": ""
     }
   ]
 }

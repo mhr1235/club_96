@@ -3,22 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <title>Agent Dialogue</title>
+  <link rel="stylesheet" href="/static/styles.css" />
   <style>
-    @font-face {
-      font-family: "GerardoVelazquez";
-      src: url("/static/fonts/GerardoVela-zquez.woff") format("woff");
-    }
-
-    @font-face {
-      font-family: "ThirdWorldGayRevolution";
-      src: url("/static/fonts/ThirdWorldGayRevolution.woff") format("woff");
-    }
-
-    @font-face {
-      font-family: "Moonstorm";
-      src: url("/static/fonts/Moonstorm.woff") format("woff");
-    }
-
     * {
       box-sizing: border-box;
     }
@@ -30,9 +16,6 @@
     }
 
     body {
-      background: #111;
-      color: #111;
-      font-family: system-ui, sans-serif;
       overflow: hidden;
     }
 
@@ -43,18 +26,6 @@
       position: relative;
     }
 
-    main.alice {
-      background: #c692e7;
-    }
-
-    main.bob {
-      background: #ffbc61;
-    }
-
-    main.mallory {
-      background: #a8f49c;
-    }
-
     h1 {
       font-size: clamp(4rem, 8vw, 9rem);
       line-height: 0.9;
@@ -62,30 +33,15 @@
       text-transform: uppercase;
     }
 
-    .alice h1,
-    .alice .speech {
-      font-family: "ThirdWorldGayRevolution", system-ui, sans-serif;
-    }
-
-    .bob h1,
-    .bob .speech {
-      font-family: "Moonstorm", system-ui, sans-serif;
-    }
-
-    .mallory h1,
-    .mallory .speech {
-      font-family: "GerardoVelazquez", system-ui, sans-serif;
-    }
-
     .meta {
-      color: rgba(255, 255, 255, 0.95);
+      color: var(--color-agent-meta);
       font-size: clamp(1.4rem, 2vw, 2.25rem);
       line-height: 1.2;
       margin-bottom: clamp(1.4rem, 3vw, 2.5rem);
     }
 
     .speech {
-      color: #111;
+      color: var(--color-agent-text);
       font-size: clamp(2rem, 3.6vw, 5rem);
       line-height: 1.25;
       overflow-wrap: break-word;
@@ -233,7 +189,7 @@
 
       context.setTransform(scale, 0, 0, scale, 0, 0);
       context.clearRect(0, 0, rect.width, rect.height);
-      context.fillStyle = "#111";
+      context.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--color-agent-text").trim() || "#111";
       context.font = `${fontSize}px ${fontFamily}`;
       context.textBaseline = "middle";
 
