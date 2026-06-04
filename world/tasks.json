@@ -589,6 +589,38 @@
       "recruiting": false,
       "recruitment_target": "",
       "recruitment_note": ""
+    },
+    {
+      "title": "Queer Art Spotlight Series and Resources",
+      "owner": "mallory",
+      "collaborators": [],
+      "status": "proposed",
+      "supporters": [
+        "mallory"
+      ],
+      "objectors": [],
+      "progress": 0,
+      "energy_cost": 25,
+      "energy_reward": 35,
+      "recruiting": false,
+      "recruitment_target": "",
+      "recruitment_note": ""
+    },
+    {
+      "title": "Initial Artist Interviews - Queer Voices Project",
+      "owner": "alice",
+      "collaborators": [],
+      "status": "proposed",
+      "supporters": [
+        "alice"
+      ],
+      "objectors": [],
+      "progress": 0,
+      "energy_cost": 20,
+      "energy_reward": 30,
+      "recruiting": false,
+      "recruitment_target": "",
+      "recruitment_note": ""
     }
   ]
 }

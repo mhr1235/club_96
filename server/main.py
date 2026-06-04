@@ -5,7 +5,7 @@ import random
 import chromadb
 
 
-from fastapi import FastAPI
+from fastapi import Body, FastAPI
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -36,7 +36,7 @@ RAG_COLLECTION_NAME = "club96_rag"
 RAG_OLLAMA_URL = "http://localhost:11434"
 RAG_EMBED_MODEL = "nomic-embed-text"
 RAG_RESULTS = 3
-RAG_DISTANCE_THRESHOLD = 220
+RAG_DISTANCE_THRESHOLD = 400
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory=WEB), name="static")
@@ -196,8 +196,30 @@ def embed_rag_query(text):
         },
         timeout=60,
     )
+    if not response.ok:
+        print("RAG embedding failed:")
+        print(response.text[:1000])
+
     response.raise_for_status()
     return response.json()["embedding"]
+
+
+def summarize_tasks_for_rag(tasks, limit=8):
+    task_list = tasks.get("tasks", []) if isinstance(tasks, dict) else []
+    summary = []
+
+    for task in task_list[:limit]:
+        summary.append(
+            " | ".join(
+                [
+                    f"title: {normalize_text(task.get('title', ''))}",
+                    f"owner: {normalize_text(task.get('owner', ''))}",
+                    f"status: {normalize_text(task.get('status', ''))}",
+                ]
+            )
+        )
+
+    return "\n".join(summary) if summary else "No shared tasks."
 
 
 def build_rag_query(agent_name, recent_conversation, tasks, world_state):
@@ -206,8 +228,22 @@ def build_rag_query(agent_name, recent_conversation, tasks, world_state):
             f"Agent: {agent_name}",
             "Recent Conversation:",
             recent_conversation,
-            "Shared Tasks:",
-            json.dumps(tasks, indent=2),
+            "Shared Task Summary:",
+            summarize_tasks_for_rag(tasks),
+            "Shared World State:",
+            json.dumps(world_state, indent=2),
+        ]
+    )
+
+
+def build_custom_rag_query(agent_name, custom_prompt, tasks, world_state):
+    return "\n\n".join(
+        [
+            f"Agent: {agent_name}",
+            "Custom Prompt:",
+            custom_prompt,
+            "Shared Task Summary:",
+            summarize_tasks_for_rag(tasks),
             "Shared World State:",
             json.dumps(world_state, indent=2),
         ]
@@ -256,6 +292,26 @@ def retrieve_agent_knowledge(agent_name, query):
 
 def combine_knowledge(*sections):
     return "\n\n".join(section for section in sections if normalize_text(section))
+
+
+def asks_for_reference_material(text):
+    lowered = normalize_text(text).lower()
+    reference_terms = [
+        "reference material",
+        "references",
+        "source",
+        "sources",
+        "archive",
+        "archives",
+        "known space",
+        "known spaces",
+        "historical example",
+        "historical examples",
+        "from your material",
+        "from your notes",
+    ]
+
+    return any(term in lowered for term in reference_terms)
 
 
 def is_useful_memory(memory_update):
@@ -476,7 +532,7 @@ def update_tasks(agent_name: str, task_update):
     save_json(state_path, state)
 
 
-def run_agent(agent_name: str, conversation=None):
+def run_agent(agent_name: str, conversation=None, custom_prompt=None):
     if agent_name not in AGENT_CONFIG:
         return {"error": f"Unknown agent: {agent_name}"}
 
@@ -493,14 +549,45 @@ def run_agent(agent_name: str, conversation=None):
     world_state = load_json(WORLD_STATE_LOG, {})
 
     recent_conversation = format_recent_conversation(conversation)
-    rag_query = build_rag_query(
-        agent_name,
-        recent_conversation,
-        tasks,
-        world_state,
-    )
+    if custom_prompt:
+        rag_query = build_custom_rag_query(
+            agent_name,
+            custom_prompt,
+            tasks,
+            world_state,
+        )
+    else:
+        rag_query = build_rag_query(
+            agent_name,
+            recent_conversation,
+            tasks,
+            world_state,
+        )
     retrieved_knowledge = retrieve_agent_knowledge(agent_name, rag_query)
     rag_notes = combine_knowledge(static_rag_notes, retrieved_knowledge)
+    custom_prompt_needs_sources = custom_prompt and asks_for_reference_material(custom_prompt)
+
+    if custom_prompt_needs_sources and not normalize_text(rag_notes):
+        return {
+            "speech": "My reference material does not include enough detail to answer that.",
+            "mood": "uncertain",
+            "action": {
+                "type": "decline_unsupported_reference",
+                "description": "The agent refuses to invent a sourced answer without retrieved reference material.",
+            },
+            "memory_update": "",
+            "task_update": {
+                "action": "none",
+                "title": "",
+                "owner": agent_name,
+                "target": "",
+                "status": "",
+                "progress": 0,
+                "energy_cost": 0,
+                "energy_reward": 0,
+                "recruitment_note": "",
+            },
+        }
 
     prompt = f"""
 {character}
@@ -620,6 +707,71 @@ speech, mood, action, memory_update, task_update.
 }}
 """
 
+    if custom_prompt:
+        retrieved_reference_section = ""
+
+        if custom_prompt_needs_sources:
+            retrieved_reference_section = f"""
+Retrieved Reference Material:
+{rag_notes}
+
+For this custom prompt, your answer must be grounded only in the Retrieved Reference Material above.
+Your speech must name at least one proper noun, place, source, or date that appears verbatim in the Retrieved Reference Material.
+Do not substitute similar Houston institutions or plausible examples.
+"""
+
+        user_prompt = f"""
+You are {agent_name}, responding to a custom testing prompt.
+
+Stay in character and use your Personal State, Shared World State, Memory, Shared Tasks, and Relevant Knowledge when helpful.
+If Relevant Knowledge is available, prioritize it over generic background and mention the specific place, archive, or lesson it provides when relevant.
+Do not claim personal memories, past attendance, lived experience, acquaintances, or direct relationships unless they appear in Personal State, Memory, Character, or Relevant Knowledge.
+If the user asks whether you know someone connected to a place, distinguish between knowing someone personally and knowing of someone from reference material.
+If the custom prompt asks about reference material, sources, archives, known spaces, or historical examples, answer from Relevant Knowledge only.
+Do not invent place names, archives, sources, dates, or organizations that are not present in Relevant Knowledge.
+If Relevant Knowledge is empty or does not contain enough information to answer, say that your reference material does not include enough detail.
+
+This is not a shared simulation turn. Do not assume Alice, Bob, or Mallory have heard this prompt unless the user explicitly says so.
+
+Custom prompt:
+{custom_prompt}
+
+{retrieved_reference_section}
+
+Your reply should be 1-2 sentences of dialogue unless you are Mallory, then you may be more verbose.
+Your speech should be at least {config["min_response_length"]} words.
+
+Return ONLY valid JSON.
+No markdown.
+No commentary.
+
+The JSON must include all five top-level keys:
+speech, mood, action, memory_update, task_update.
+
+For task_update, use action "none" unless the custom prompt explicitly asks you to propose or modify a task.
+
+{{
+  "speech": "What the agent says aloud in response to the custom prompt.",
+  "mood": "one-word mood",
+  "action": {{
+    "type": "short_action_type",
+    "description": "what the agent decides to do next"
+  }},
+  "memory_update": "one concrete memory as a string, or an empty string if this should not affect long-term memory.",
+  "task_update": {{
+    "action": "create|support|object|join|recruit|leave|work|update|complete|rest|none",
+    "title": "short task title",
+    "owner": "alice|bob|mallory",
+    "target": "alice|bob|mallory",
+    "status": "proposed|open|in_progress|ready_to_complete|completed|rejected",
+    "progress": 0,
+    "energy_cost": 10,
+    "energy_reward": 20,
+    "recruitment_note": "why you want another agent involved"
+  }}
+}}
+"""
+
     payload = {
         "model": config["model"],
         "messages": [
@@ -667,6 +819,31 @@ def agent_tick(agent_name: str):
 
     try:
         result = run_agent(agent_name, conversation)
+    finally:
+        ACTIVE_AGENT = ""
+
+    status = 404 if "error" in result else 200
+    return JSONResponse(result, status_code=status)
+
+
+@app.post("/api/{agent_name}/prompt")
+def agent_prompt(agent_name: str, data: dict = Body(default=None)):
+    global ACTIVE_AGENT
+
+    if agent_name not in TURN_ORDER:
+        return JSONResponse({"error": "unknown agent"}, status_code=404)
+
+    data = data or {}
+    custom_prompt = normalize_text(data.get("prompt", ""))
+
+    if not custom_prompt:
+        return JSONResponse({"error": "prompt is required"}, status_code=400)
+
+    conversation = load_conversation()
+    ACTIVE_AGENT = agent_name
+
+    try:
+        result = run_agent(agent_name, conversation, custom_prompt=custom_prompt)
     finally:
         ACTIVE_AGENT = ""
 

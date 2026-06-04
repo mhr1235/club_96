@@ -22,19 +22,32 @@
       margin-bottom: 1.5rem;
     }
 
-    .controls {
-      display: flex;
-      gap: 0.75rem;
-      flex-wrap: wrap;
-      margin-bottom: 1rem;
-    }
-
     button {
       padding: 0.8rem 1rem;
       border-radius: 999px;
       border: 0;
       cursor: pointer;
       font-weight: bold;
+    }
+
+    textarea {
+      box-sizing: border-box;
+      width: 100%;
+      min-height: 8rem;
+      resize: vertical;
+      border: 1px solid #444;
+      border-radius: 12px;
+      padding: 0.9rem;
+      background: #111;
+      color: #f4f4f4;
+      font: inherit;
+      line-height: 1.45;
+      margin: 0.5rem 0 0.8rem;
+    }
+
+    textarea:focus {
+      outline: 2px solid #888;
+      outline-offset: 2px;
     }
 
     .grid {
@@ -75,24 +88,24 @@
       color: #aaa;
       margin: 1rem 0;
     }
+
+    .prompt-button {
+      margin-bottom: 1rem;
+    }
   </style>
 </head>
 <body>
   <h1>Club_96</h1>
-  <p class="subtitle">Proof-of-concept distributed multi-agent simulation.</p>
-
-  <div class="controls">
-    <button onclick="tickAgent('alice')">Run Alice</button>
-    <button onclick="tickAgent('bob')">Run Bob</button>
-    <button onclick="tickAgent('mallory')">Run Mallory</button>
-    <button onclick="tickAll()">Run All</button>
-  </div>
+  <p class="subtitle">Custom prompt tester for individual agents.</p>
 
   <div id="status" class="status">Ready.</div>
 
   <div class="grid">
     <div class="card" id="card-alice">
       <h2>Alice</h2>
+      <label class="label" for="alice-prompt">Custom Prompt</label>
+      <textarea id="alice-prompt" placeholder="Ask Alice something directly..."></textarea>
+      <button class="prompt-button" onclick="promptAgent('alice')">Ask Alice</button>
       <div class="label">Speech</div>
       <div id="alice-speech" class="speech">Waiting.</div>
       <div class="label">Mood</div>
@@ -105,6 +118,9 @@
 
     <div class="card" id="card-bob">
       <h2>Bob</h2>
+      <label class="label" for="bob-prompt">Custom Prompt</label>
+      <textarea id="bob-prompt" placeholder="Ask Bob something directly..."></textarea>
+      <button class="prompt-button" onclick="promptAgent('bob')">Ask Bob</button>
       <div class="label">Speech</div>
       <div id="bob-speech" class="speech">Waiting.</div>
       <div class="label">Mood</div>
@@ -117,6 +133,9 @@
 
     <div class="card" id="card-mallory">
       <h2>Mallory</h2>
+      <label class="label" for="mallory-prompt">Custom Prompt</label>
+      <textarea id="mallory-prompt" placeholder="Ask Mallory something directly..."></textarea>
+      <button class="prompt-button" onclick="promptAgent('mallory')">Ask Mallory</button>
       <div class="label">Speech</div>
       <div id="mallory-speech" class="speech">Waiting.</div>
       <div class="label">Mood</div>
@@ -129,8 +148,6 @@
   </div>
 
   <script>
-    const agents = ["alice", "bob", "mallory"];
-
     function setAgentLoading(agentName) {
       document.getElementById(`${agentName}-speech`).textContent = "Thinking...";
       document.getElementById(`${agentName}-mood`).textContent = "—";
@@ -150,27 +167,32 @@
       document.getElementById(`${agentName}-memory`).textContent = data.memory_update || "—";
     }
 
-    async function tickAgent(agentName) {
+    async function promptAgent(agentName) {
+      const prompt = document.getElementById(`${agentName}-prompt`).value.trim();
+
+      if (!prompt) {
+        document.getElementById("status").textContent = `Enter a prompt for ${agentName}.`;
+        return;
+      }
+
       setAgentLoading(agentName);
-      document.getElementById("status").textContent = `Running ${agentName}...`;
+      document.getElementById("status").textContent = `Asking ${agentName}...`;
 
       try {
-        const response = await fetch(`/api/${agentName}/tick`);
+        const response = await fetch(`/api/${agentName}/prompt`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ prompt }),
+        });
         const data = await response.json();
         setAgentOutput(agentName, data);
         document.getElementById("status").textContent = `Finished ${agentName}.`;
       } catch (error) {
         document.getElementById(`${agentName}-speech`).textContent = `Error: ${error}`;
-        document.getElementById("status").textContent = `Error running ${agentName}.`;
+        document.getElementById("status").textContent = `Error asking ${agentName}.`;
       }
-    }
-
-    async function tickAll() {
-      document.getElementById("status").textContent = "Running all agents...";
-      for (const agent of agents) {
-        await tickAgent(agent);
-      }
-      document.getElementById("status").textContent = "Finished all agents.";
     }
   </script>
 </body>
