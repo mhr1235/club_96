@@ -1,4 +1,4 @@
-# Gold Room Retrieval Chunks
+ollama # Gold Room Retrieval Chunks
 
 ## Chunk: gold_room_basic_history
 

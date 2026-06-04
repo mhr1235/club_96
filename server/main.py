@@ -2,6 +2,7 @@ from pathlib import Path
 import json
 import requests
 import random
+import chromadb
 
 
 from fastapi import FastAPI
@@ -29,6 +30,13 @@ WEAK_MEMORY_PHRASES = [
     "exploring in more depth",
     "open to the idea",
 ]
+
+CHROMA_PATH = WORLD / "rag_chroma"
+RAG_COLLECTION_NAME = "club96_rag"
+RAG_OLLAMA_URL = "http://localhost:11434"
+RAG_EMBED_MODEL = "nomic-embed-text"
+RAG_RESULTS = 3
+RAG_DISTANCE_THRESHOLD = 220
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory=WEB), name="static")
@@ -177,6 +185,77 @@ def format_recent_conversation(conversation, limit=8):
         )
 
     return "\n\n".join(lines)
+
+
+def embed_rag_query(text):
+    response = requests.post(
+        f"{RAG_OLLAMA_URL}/api/embeddings",
+        json={
+            "model": RAG_EMBED_MODEL,
+            "prompt": text,
+        },
+        timeout=60,
+    )
+    response.raise_for_status()
+    return response.json()["embedding"]
+
+
+def build_rag_query(agent_name, recent_conversation, tasks, world_state):
+    return "\n\n".join(
+        [
+            f"Agent: {agent_name}",
+            "Recent Conversation:",
+            recent_conversation,
+            "Shared Tasks:",
+            json.dumps(tasks, indent=2),
+            "Shared World State:",
+            json.dumps(world_state, indent=2),
+        ]
+    )
+
+
+def retrieve_agent_knowledge(agent_name, query):
+    try:
+        client = chromadb.PersistentClient(path=str(CHROMA_PATH))
+        collection = client.get_collection(name=RAG_COLLECTION_NAME)
+        query_embedding = embed_rag_query(query)
+
+        results = collection.query(
+            query_embeddings=[query_embedding],
+            n_results=RAG_RESULTS,
+            where={"agent": agent_name},
+            include=["documents", "metadatas", "distances"],
+        )
+    except Exception as error:
+        print(f"RAG retrieval failed for {agent_name}: {error}")
+        return ""
+
+    documents = results.get("documents", [[]])[0]
+    metadatas = results.get("metadatas", [[]])[0]
+    distances = results.get("distances", [[]])[0]
+    knowledge_blocks = []
+
+    for document, metadata, distance in zip(documents, metadatas, distances):
+        if distance > RAG_DISTANCE_THRESHOLD:
+            continue
+
+        knowledge_blocks.append(
+            "\n".join(
+                [
+                    f"Source: {metadata.get('source', '')}",
+                    f"URL: {metadata.get('url', '')}",
+                    f"Tags: {metadata.get('tags', '')}",
+                    f"Relevance distance: {distance:.2f}",
+                    document,
+                ]
+            )
+        )
+
+    return "\n\n---\n\n".join(knowledge_blocks)
+
+
+def combine_knowledge(*sections):
+    return "\n\n".join(section for section in sections if normalize_text(section))
 
 
 def is_useful_memory(memory_update):
@@ -409,11 +488,19 @@ def run_agent(agent_name: str, conversation=None):
     character = read_optional_text(agent_dir / "character.md")
     memory = load_json(agent_dir / "memory.json", {"memories": []})
     state = load_json(agent_dir / "state.json", {})
-    rag_notes = read_optional_text(agent_dir / "rag" / "notes.md")
+    static_rag_notes = read_optional_text(agent_dir / "rag" / "notes.md")
     tasks = load_json(TASKS_LOG, {"tasks": []})
     world_state = load_json(WORLD_STATE_LOG, {})
 
     recent_conversation = format_recent_conversation(conversation)
+    rag_query = build_rag_query(
+        agent_name,
+        recent_conversation,
+        tasks,
+        world_state,
+    )
+    retrieved_knowledge = retrieve_agent_knowledge(agent_name, rag_query)
+    rag_notes = combine_knowledge(static_rag_notes, retrieved_knowledge)
 
     prompt = f"""
 {character}
