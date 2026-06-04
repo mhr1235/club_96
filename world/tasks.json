@@ -609,10 +609,15 @@
     {
       "title": "Initial Artist Interviews - Queer Voices Project",
       "owner": "alice",
-      "collaborators": [],
-      "status": "proposed",
+      "collaborators": [
+        "bob",
+        "mallory"
+      ],
+      "status": "open",
       "supporters": [
-        "alice"
+        "alice",
+        "bob",
+        "mallory"
       ],
       "objectors": [],
       "progress": 0,
