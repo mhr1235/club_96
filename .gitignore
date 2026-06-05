@@ -6,7 +6,8 @@ __pycache__/
 agents/*/memory.json
 agents/*/state.json
 world/conversation.json
+world/tasks.json
+world/rag_chroma/
 
 .DS_Store
-
 
