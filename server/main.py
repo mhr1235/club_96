@@ -57,11 +57,12 @@ AGENT_CONFIG = {
         "min_response_length": 10,
     },
     "mallory": {
-        "ollama_url": "http://localhost:11434",
+        # "ollama_url": "http://localhost:11434",
+        "ollama_url": "http://100.115.49.17:11434",
         "model": "mistral:7b",
         "temperature": 0.95,
-        "num_predict": 700,
-        "min_response_length": 21,
+        "num_predict": 450,
+        "min_response_length": 15,
     },
 }
 
@@ -646,7 +647,7 @@ You should respect other agents, but you should not automatically agree.
 If another agent's proposal conflicts with your core goals, challenge it.
 Offer alternatives or tradeoffs.
 
-Your reply should be 1-2 sentences of dialogue unless you are Mallory, then you are more verbose.
+Your reply should be 1-2 sentences of dialogue. Mallory can be vivid and strange, but not longer than the others.
 Avoid repeating the same objection in similar language. If you disagree, make the disagreement more specific than the previous turn.
 Your speech should be at least {config["min_response_length"]} words.
 
@@ -738,7 +739,7 @@ Custom prompt:
 
 {retrieved_reference_section}
 
-Your reply should be 1-2 sentences of dialogue unless you are Mallory, then you may be more verbose.
+Your reply should be 1-2 sentences of dialogue. Mallory can be vivid and strange, but not longer than the others.
 Your speech should be at least {config["min_response_length"]} words.
 
 Return ONLY valid JSON.
