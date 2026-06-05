@@ -58,17 +58,15 @@
       pointer-events: none;
       position: absolute;
       transition: opacity 180ms ease;
-      transform-origin: center;
       width: 100%;
       height: 100%;
     }
 
     .thinking .speech {
-      opacity: 0.28;
+      opacity: 0;
     }
 
     .thinking .spiral-canvas {
-      animation: spiralSpin 2.8s linear infinite;
       opacity: 1;
     }
 
@@ -88,19 +86,6 @@
       51%, 100% { opacity: 0; }
     }
 
-    @keyframes spiralSpin {
-      0% {
-        transform: rotate(0deg) scaleX(1) scaleY(1);
-      }
-
-      50% {
-        transform: rotate(180deg) scaleX(1.08) scaleY(0.92);
-      }
-
-      100% {
-        transform: rotate(360deg) scaleX(1) scaleY(1);
-      }
-    }
   </style>
 </head>
 
@@ -121,6 +106,8 @@
     let isThinking = false;
     let spiralFrameId = 0;
     let spiralIsAnimating = false;
+    let holdThinkingUntilNextDialogue = false;
+    let thinkingHoldTimeoutId = 0;
 
     function titleize(value) {
       return value.charAt(0).toUpperCase() + value.slice(1);
@@ -165,7 +152,51 @@
       canvas.height = Math.max(1, Math.floor(rect.height * scale));
     }
 
-    function drawSpiralText(time = 0) {
+    function wrapTextForCanvas(context, text, maxWidth) {
+      const words = text.replace(/\s+/g, " ").trim().split(" ");
+      const lines = [];
+      let line = "";
+
+      for (const word of words) {
+        const nextLine = line ? `${line} ${word}` : word;
+
+        if (line && context.measureText(nextLine).width > maxWidth) {
+          lines.push(line);
+          line = word;
+        } else {
+          line = nextLine;
+        }
+      }
+
+      if (line) {
+        lines.push(line);
+      }
+
+      return lines.length ? lines : ["thinking"];
+    }
+
+    function twirlPoint(x, y, centerX, centerY, maxRadius, time, index) {
+      const dx = x - centerX;
+      const dy = y - centerY;
+      const radius = Math.hypot(dx, dy);
+      const normalizedRadius = Math.min(1, radius / maxRadius);
+      const pull = Math.pow(1 - normalizedRadius, 2.15);
+      const spin = time * 0.0012;
+      const twist = pull * (Math.PI * 2.8 + Math.sin(time * 0.002 + index * 0.21) * 0.65);
+      const angle = Math.atan2(dy, dx) + twist + spin;
+      const wave = Math.sin(time * 0.003 + radius * 0.035 + index * 0.13) * 10 * pull;
+      const warpedRadius = radius + wave - pull * 18;
+
+      return {
+        x: centerX + Math.cos(angle) * warpedRadius,
+        y: centerY + Math.sin(angle) * warpedRadius * (0.72 + pull * 0.18),
+        angle,
+        pull,
+        radius,
+      };
+    }
+
+    function drawWarpedSpeech(time = 0) {
       if (!isThinking) {
         spiralIsAnimating = false;
         return;
@@ -182,6 +213,7 @@
       const styles = getComputedStyle(speech);
       const fontSize = parseFloat(styles.fontSize) || 48;
       const fontFamily = styles.fontFamily || "system-ui, sans-serif";
+      const lineHeight = parseFloat(styles.lineHeight) || fontSize * 1.25;
 
       if (canvas.width !== Math.floor(rect.width * scale) || canvas.height !== Math.floor(rect.height * scale)) {
         resizeSpiralCanvas();
@@ -193,30 +225,42 @@
       context.font = `${fontSize}px ${fontFamily}`;
       context.textBaseline = "middle";
 
-      const compactText = text.replace(/\s+/g, " ").trim() || "thinking";
-      const centerX = rect.width * 0.5;
-      const centerY = rect.height * 0.48;
-      const maxRadius = Math.hypot(rect.width, rect.height) * 0.46;
-      const chars = compactText.repeat(8);
-      const spin = time * 0.0006;
+      const lines = wrapTextForCanvas(context, text || "thinking", rect.width);
+      const centerX = rect.width * 0.54 + Math.sin(time * 0.0011) * rect.width * 0.05;
+      const centerY = Math.min(rect.height * 0.58, lines.length * lineHeight * 0.42);
+      const maxRadius = Math.max(rect.width, rect.height) * 0.62;
+      const startY = lineHeight * 0.5;
+      let characterIndex = 0;
 
-      for (let i = 0; i < chars.length; i++) {
-        const t = i / Math.max(1, chars.length - 1);
-        const angle = t * Math.PI * 9 + spin;
-        const radius = 18 + t * maxRadius;
-        const wobble = Math.sin(time * 0.004 + i * 0.7) * 10;
-        const x = centerX + Math.cos(angle) * (radius + wobble);
-        const y = centerY + Math.sin(angle) * radius * 0.6;
+      for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+        const line = lines[lineIndex];
+        let x = 0;
+        const y = startY + lineIndex * lineHeight;
 
-        context.save();
-        context.translate(x, y);
-        context.rotate(angle + Math.PI / 2);
-        context.scale(1 + Math.sin(time * 0.003 + i) * 0.35, 0.75 + Math.cos(time * 0.004 + i) * 0.2);
-        context.fillText(chars[i], 0, 0);
-        context.restore();
+        for (const char of line) {
+          const charWidth = context.measureText(char).width;
+          const sourceX = x + charWidth * 0.5;
+          const sourceY = y;
+          const point = twirlPoint(sourceX, sourceY, centerX, centerY, maxRadius, time, characterIndex);
+          const tangent = point.angle + Math.PI / 2;
+          const stretch = 1 + point.pull * 1.8 + Math.sin(time * 0.002 + characterIndex) * point.pull * 0.3;
+          const squash = 1 - point.pull * 0.42;
+          const alpha = 0.42 + point.pull * 0.58;
+
+          context.save();
+          context.globalAlpha = alpha;
+          context.translate(point.x, point.y);
+          context.rotate(tangent);
+          context.scale(stretch, Math.max(0.42, squash));
+          context.fillText(char, -charWidth * 0.5, 0);
+          context.restore();
+
+          x += charWidth;
+          characterIndex++;
+        }
       }
 
-      spiralFrameId = requestAnimationFrame(drawSpiralText);
+      spiralFrameId = requestAnimationFrame(drawWarpedSpeech);
     }
 
     function startSpiralAnimation() {
@@ -225,7 +269,7 @@
       }
 
       resizeSpiralCanvas();
-      spiralFrameId = requestAnimationFrame(drawSpiralText);
+      spiralFrameId = requestAnimationFrame(drawWarpedSpeech);
     }
 
     function setThinking(nextIsThinking) {
@@ -251,10 +295,29 @@
       }
     }
 
+    function clearThinkingHold() {
+      holdThinkingUntilNextDialogue = false;
+      clearTimeout(thinkingHoldTimeoutId);
+      thinkingHoldTimeoutId = 0;
+    }
+
+    function holdThinkingForIncomingDialogue() {
+      if (holdThinkingUntilNextDialogue) {
+        return;
+      }
+
+      holdThinkingUntilNextDialogue = true;
+      thinkingHoldTimeoutId = setTimeout(() => {
+        clearThinkingHold();
+        setThinking(false);
+      }, 8000);
+    }
+
     function typeText(element, text, speed = 18) {
       element.textContent = "";
       element.classList.add("cursor");
       isTyping = true;
+      setThinking(false);
 
       let index = 0;
 
@@ -313,6 +376,7 @@
       latestTurnKey = turnKey;
       setText("meta", `Turn ${latest.turn} · Mood: ${latest.mood || "—"}`);
       document.getElementById("speech").classList.remove("waiting");
+      clearThinkingHold();
       typeSpeech(latest.speech || "No speech returned.");
     }
 
@@ -323,8 +387,22 @@
         cache: "no-store"
       });
       const status = await response.json();
+      const agentIsActive = status.active_agent === agentName;
 
-      setThinking(status.active_agent === agentName && !isTyping);
+      if (agentIsActive) {
+        clearThinkingHold();
+        setThinking(!isTyping);
+        return;
+      }
+
+      if (isThinking && !isTyping) {
+        holdThinkingForIncomingDialogue();
+        return;
+      }
+
+      if (!holdThinkingUntilNextDialogue) {
+        setThinking(false);
+      }
     }
 
     loadAgentDialogue();
