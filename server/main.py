@@ -744,7 +744,10 @@ Do not merely say that something is worth exploring again.
 When using Relevant Knowledge:
 - Put the most interesting specific detail in speech when possible.
 - Do not hide the only proper noun, place, archive, event, date, or historical example inside memory_update.
+- If you are deciding whether a vivid reference belongs in speech or memory_update, put it in speech.
+- memory_update should be plainer and shorter than speech.
 - memory_update should record what changed for the agent: a decision, commitment, objection, lesson, collaboration, or useful fact to remember.
+- memory_update should not introduce a new vivid reference that was absent from speech.
 
 Return ONLY valid JSON.
 No markdown.
@@ -760,7 +763,7 @@ speech, mood, action, memory_update, task_update.
     "type": "short_action_type",
     "description": "what the agent decides to do next"
   }},
-  "memory_update": "one concrete memory as a string, or an empty string",
+  "memory_update": "plain persistence note; do not put a more vivid reference here than in speech",
   "task_update": {{
     "action": "create|support|object|join|recruit|leave|work|update|complete|rest|none",
     "title": "short task title",
