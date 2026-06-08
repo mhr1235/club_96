@@ -129,6 +129,10 @@
     <button onclick="advanceSimulation()">Advance Simulation</button>
     <button onclick="runThreeTurns()">Run 3 Turns</button>
     <button class="danger" onclick="resetSimulation()">Reset Conversation</button>
+    <button class="danger" onclick="resetTasks()">Reset Tasks</button>
+    <button class="danger" onclick="resetMemories()">Reset Memories</button>
+    <button class="danger" onclick="resetStates()">Reset States</button>
+    <button class="danger" onclick="resetRuntime()">Reset All Runtime</button>
   </div>
 
   <div id="status" class="status">Ready.</div>
@@ -285,6 +289,49 @@ function renderConversation(conversation, animateLast = false) {
       const data = await response.json();
       renderConversation(data.conversation, false);
       document.getElementById("status").textContent = "Conversation reset.";
+    }
+
+    async function postReset(endpoint, message) {
+      const confirmed = confirm(message);
+      if (!confirmed) return null;
+
+      const response = await fetch(endpoint, {
+        method: "POST"
+      });
+
+      return response.json();
+    }
+
+    async function resetTasks() {
+      const data = await postReset("/api/sim/reset-tasks", "Reset all shared tasks/goals?");
+      if (!data) return;
+
+      document.getElementById("status").textContent = "Tasks reset.";
+    }
+
+    async function resetMemories() {
+      const data = await postReset("/api/sim/reset-memories", "Reset all agent memories?");
+      if (!data) return;
+
+      document.getElementById("status").textContent = "Memories reset.";
+    }
+
+    async function resetStates() {
+      const data = await postReset("/api/sim/reset-states", "Reset all agent states to neutral/full energy?");
+      if (!data) return;
+
+      document.getElementById("status").textContent = "Agent states reset.";
+    }
+
+    async function resetRuntime() {
+      const data = await postReset(
+        "/api/sim/reset-runtime",
+        "Reset conversation, tasks, memories, and agent states?"
+      );
+      if (!data) return;
+
+      renderConversation(data.conversation, false);
+      document.getElementById("status").textContent = "All runtime files reset.";
     }
 
     loadConversation();

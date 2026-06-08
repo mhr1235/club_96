@@ -20,6 +20,8 @@
     }
 
     main {
+      display: flex;
+      flex-direction: column;
       height: 100vh;
       overflow: hidden;
       padding: clamp(1.5rem, 3vw, 3rem);
@@ -49,6 +51,8 @@
     }
 
     .speech-shell {
+      flex: 1;
+      min-height: 0;
       position: relative;
     }
 
@@ -114,7 +118,10 @@
     }
 
     function setText(id, value) {
-      document.getElementById(id).textContent = value;
+      const element = document.getElementById(id);
+      if (element) {
+        element.textContent = value;
+      }
     }
 
     function getDisplayFontSize() {
@@ -146,10 +153,36 @@
 
     function resizeSpiralCanvas() {
       const canvas = document.getElementById("spiral");
-      const rect = canvas.getBoundingClientRect();
+      const shell = document.querySelector(".speech-shell");
+      if (!canvas || !shell) {
+        return;
+      }
+
+      const rect = shell.getBoundingClientRect();
       const scale = window.devicePixelRatio || 1;
       canvas.width = Math.max(1, Math.floor(rect.width * scale));
       canvas.height = Math.max(1, Math.floor(rect.height * scale));
+    }
+
+    function getAgentNameFromPath() {
+      const pathParts = window.location.pathname.split("/");
+      return pathParts[pathParts.length - 1];
+    }
+
+    function getWarpText() {
+      const speech = document.getElementById("speech");
+      if (!speech) {
+        return "thinking thinking thinking";
+      }
+
+      const text = speech.textContent.replace(/\s+/g, " ").trim();
+
+      if (!text || speech.classList.contains("waiting")) {
+        const agentName = titleize(getAgentNameFromPath());
+        return Array(18).fill(`${agentName} is thinking`).join(" ");
+      }
+
+      return text;
     }
 
     function wrapTextForCanvas(context, text, maxWidth) {
@@ -206,10 +239,21 @@
 
       const canvas = document.getElementById("spiral");
       const speech = document.getElementById("speech");
+      const shell = document.querySelector(".speech-shell");
+      if (!canvas || !speech || !shell) {
+        spiralIsAnimating = false;
+        return;
+      }
+
       const context = canvas.getContext("2d");
-      const rect = canvas.getBoundingClientRect();
+      if (!context) {
+        spiralIsAnimating = false;
+        return;
+      }
+
+      const rect = shell.getBoundingClientRect();
       const scale = window.devicePixelRatio || 1;
-      const text = speech.textContent || "";
+      const text = getWarpText();
       const styles = getComputedStyle(speech);
       const fontSize = parseFloat(styles.fontSize) || 48;
       const fontFamily = styles.fontFamily || "system-ui, sans-serif";
@@ -225,9 +269,9 @@
       context.font = `${fontSize}px ${fontFamily}`;
       context.textBaseline = "middle";
 
-      const lines = wrapTextForCanvas(context, text || "thinking", rect.width);
+      const lines = wrapTextForCanvas(context, text, rect.width);
       const centerX = rect.width * 0.54 + Math.sin(time * 0.0011) * rect.width * 0.05;
-      const centerY = Math.min(rect.height * 0.58, lines.length * lineHeight * 0.42);
+      const centerY = rect.height * 0.48;
       const maxRadius = Math.max(rect.width, rect.height) * 0.62;
       const startY = lineHeight * 0.5;
       let characterIndex = 0;
@@ -290,8 +334,11 @@
         cancelAnimationFrame(spiralFrameId);
         spiralIsAnimating = false;
         const canvas = document.getElementById("spiral");
-        const context = canvas.getContext("2d");
-        context.clearRect(0, 0, canvas.width, canvas.height);
+        const context = canvas ? canvas.getContext("2d") : null;
+
+        if (canvas && context) {
+          context.clearRect(0, 0, canvas.width, canvas.height);
+        }
       }
     }
 
@@ -339,6 +386,10 @@
 
     function typeSpeech(value) {
       const speech = document.getElementById("speech");
+      if (!speech) {
+        return;
+      }
+
       typeText(speech, value);
     }
 
@@ -347,61 +398,77 @@
         return;
       }
 
-      const pathParts = window.location.pathname.split("/");
-      const agentName = pathParts[pathParts.length - 1];
+      try {
+        const agentName = getAgentNameFromPath();
 
-      const response = await fetch("/api/sim/conversation", {
-        cache: "no-store"
-      });
-      const conversation = await response.json();
-      const filtered = conversation.filter(entry => entry.speaker === agentName);
-      const latest = filtered[filtered.length - 1];
+        const response = await fetch("/api/sim/conversation", {
+          cache: "no-store"
+        });
 
-      document.title = `${titleize(agentName)} Dialogue`;
-      document.getElementById("page").className = `${agentName}${isThinking ? " thinking" : ""}`;
-      setText("agent-name", titleize(agentName));
+        if (!response.ok) {
+          return;
+        }
 
-      if (!latest) {
-        setText("meta", "Waiting for output.");
-        document.getElementById("speech").classList.add("waiting");
-        setSpeech(`No dialogue yet for ${titleize(agentName)}.`);
-        return;
+        const conversation = await response.json();
+        const filtered = conversation.filter(entry => entry.speaker === agentName);
+        const latest = filtered[filtered.length - 1];
+
+        document.title = `${titleize(agentName)} Dialogue`;
+        document.getElementById("page").className = `${agentName}${isThinking ? " thinking" : ""}`;
+        setText("agent-name", titleize(agentName));
+
+        if (!latest) {
+          setText("meta", "Waiting for output.");
+          document.getElementById("speech").classList.add("waiting");
+          setSpeech(`No dialogue yet for ${titleize(agentName)}.`);
+          return;
+        }
+
+        const turnKey = `${latest.turn}:${latest.speech}`;
+        if (turnKey === latestTurnKey) {
+          return;
+        }
+
+        latestTurnKey = turnKey;
+        setText("meta", `Turn ${latest.turn} · Mood: ${latest.mood || "—"}`);
+        document.getElementById("speech").classList.remove("waiting");
+        clearThinkingHold();
+        typeSpeech(latest.speech || "No speech returned.");
+      } catch (error) {
+        console.error("Agent dialogue poll failed:", error);
       }
-
-      const turnKey = `${latest.turn}:${latest.speech}`;
-      if (turnKey === latestTurnKey) {
-        return;
-      }
-
-      latestTurnKey = turnKey;
-      setText("meta", `Turn ${latest.turn} · Mood: ${latest.mood || "—"}`);
-      document.getElementById("speech").classList.remove("waiting");
-      clearThinkingHold();
-      typeSpeech(latest.speech || "No speech returned.");
     }
 
     async function loadThinkingStatus() {
-      const pathParts = window.location.pathname.split("/");
-      const agentName = pathParts[pathParts.length - 1];
-      const response = await fetch("/api/sim/status", {
-        cache: "no-store"
-      });
-      const status = await response.json();
-      const agentIsActive = status.active_agent === agentName;
+      try {
+        const agentName = getAgentNameFromPath();
+        const response = await fetch("/api/sim/status", {
+          cache: "no-store"
+        });
 
-      if (agentIsActive) {
-        clearThinkingHold();
-        setThinking(!isTyping);
-        return;
-      }
+        if (!response.ok) {
+          return;
+        }
 
-      if (isThinking && !isTyping) {
-        holdThinkingForIncomingDialogue();
-        return;
-      }
+        const status = await response.json();
+        const agentIsActive = status.active_agent === agentName;
 
-      if (!holdThinkingUntilNextDialogue) {
-        setThinking(false);
+        if (agentIsActive) {
+          clearThinkingHold();
+          setThinking(!isTyping);
+          return;
+        }
+
+        if (isThinking && !isTyping) {
+          holdThinkingForIncomingDialogue();
+          return;
+        }
+
+        if (!holdThinkingUntilNextDialogue) {
+          setThinking(false);
+        }
+      } catch (error) {
+        console.error("Thinking status poll failed:", error);
       }
     }
 

@@ -23,6 +23,12 @@ TURN_ORDER = ["alice", "bob", "mallory"]
 CURRENT_ROUND = []
 ACTIVE_AGENT = ""
 
+DEFAULT_AGENT_STATE = {
+    "location": "planning_meeting",
+    "mood": "neutral",
+    "energy": 100,
+}
+
 WEAK_MEMORY_PHRASES = [
     "noted potential benefits",
     "considered potential benefits",
@@ -35,8 +41,8 @@ CHROMA_PATH = WORLD / "rag_chroma"
 RAG_COLLECTION_NAME = "club96_rag"
 RAG_OLLAMA_URL = "http://localhost:11434"
 RAG_EMBED_MODEL = "nomic-embed-text"
-RAG_RESULTS = 3
-RAG_DISTANCE_THRESHOLD = 400
+RAG_RESULTS = 5
+RAG_DISTANCE_THRESHOLD = 475
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory=WEB), name="static")
@@ -45,25 +51,41 @@ AGENT_CONFIG = {
     "alice": {
         "ollama_url": "http://localhost:11434",
         "model": "gemma3:4b",
-        "temperature": 0.8,
-        "num_predict": 500,
-        "min_response_length": 15,
+        "temperature": 0.9,
+        "num_predict": 220,
+        "min_response_length": 6,
     },
     "bob": {
         "ollama_url": "http://localhost:11434",
         "model": "llama3.2:latest",
-        "temperature": 0.55,
-        "num_predict": 500,
-        "min_response_length": 10,
+        "temperature": 0.75,
+        "num_predict": 220,
+        "min_response_length": 6,
     },
     "mallory": {
-        # "ollama_url": "http://localhost:11434",
-        "ollama_url": "http://100.115.49.17:11434",
+         "ollama_url": "http://localhost:11434",
+        #"ollama_url": "http://100.115.49.17:11434",
         "model": "mistral:7b",
-        "temperature": 0.95,
-        "num_predict": 450,
-        "min_response_length": 15,
+        "temperature": 1.05,
+        "num_predict": 260,
+        "min_response_length": 6,
     },
+}
+
+AGENT_STYLE = {
+    "alice": (
+        "Alice sounds warm, socially fluent, playful, affirming, and contemporary. "
+        "She notices feelings and relationships quickly."
+    ),
+    "bob": (
+        "Bob sounds like a practical queer Southerner from Alabama or Arkansas: plainspoken, neighborly, dryly funny, and grounded. "
+        "He uses light colloquial Southern phrasing such as y'all, reckon, I hear you, might oughta, ain't, and that's got legs. "
+        "Do not make him formal, corporate, academic, or generic. Do not overdo dialect or turn him into caricature."
+    ),
+    "mallory": (
+        "Mallory sounds vivid, strange, art-damaged, and intense, but still brief. "
+        "She should land one memorable image instead of a long monologue."
+    ),
 }
 
 
@@ -148,6 +170,16 @@ def load_conversation():
 
 def save_conversation(conversation):
     save_json(CONVERSATION_LOG, conversation)
+
+
+def reset_agent_memories():
+    for agent_name in TURN_ORDER:
+        save_json(AGENTS / agent_name / "memory.json", {"memories": []})
+
+
+def reset_agent_states():
+    for agent_name in TURN_ORDER:
+        save_json(AGENTS / agent_name / "state.json", DEFAULT_AGENT_STATE.copy())
 
 
 def get_next_agent(conversation):
@@ -541,6 +573,7 @@ def run_agent(agent_name: str, conversation=None, custom_prompt=None):
 
     agent_dir = AGENTS / agent_name
     config = AGENT_CONFIG[agent_name]
+    speaking_style = AGENT_STYLE.get(agent_name, "")
 
     character = read_optional_text(agent_dir / "character.md")
     memory = load_json(agent_dir / "memory.json", {"memories": []})
@@ -610,6 +643,9 @@ def run_agent(agent_name: str, conversation=None, custom_prompt=None):
 
 ## Recent Conversation
 {recent_conversation}
+
+## Speaking Style
+{speaking_style}
 """
 
     user_prompt = f"""
@@ -643,11 +679,21 @@ The simulation is not only about planning.
 
 React to what the others have said.
 
+If Relevant Knowledge is available, let one concrete trace from it enter your response, even indirectly.
+You may use it as an anecdote, memory-like association, caution, comparison, image, or planning instinct.
+Do not cite it like a report.
+Do not force a full explanation.
+Let it leak into the conversation naturally.
+
 You should respect other agents, but you should not automatically agree.
 If another agent's proposal conflicts with your core goals, challenge it.
 Offer alternatives or tradeoffs.
 
-Your reply should be 1-2 sentences of dialogue. Mallory can be vivid and strange, but not longer than the others.
+Your speech should sound like a short text message: 1 sentence, usually 6-20 words.
+Stay strongly in character.
+Do not explain your reasoning.
+Do not summarize the situation.
+Say one vivid, specific thing in your own voice.
 Avoid repeating the same objection in similar language. If you disagree, make the disagreement more specific than the previous turn.
 Your speech should be at least {config["min_response_length"]} words.
 
@@ -739,7 +785,11 @@ Custom prompt:
 
 {retrieved_reference_section}
 
-Your reply should be 1-2 sentences of dialogue. Mallory can be vivid and strange, but not longer than the others.
+Your speech should sound like a short text message: 1 sentence, usually 6-20 words.
+Stay strongly in character.
+Do not explain your reasoning.
+Do not summarize the situation.
+Say one vivid, specific thing in your own voice.
 Your speech should be at least {config["min_response_length"]} words.
 
 Return ONLY valid JSON.
@@ -910,6 +960,9 @@ def get_tasks():
 
 @app.post("/api/sim/reset")
 def reset_conversation():
+    global CURRENT_ROUND
+
+    CURRENT_ROUND = []
     save_conversation([])
     return JSONResponse({"status": "reset", "conversation": []})
 
@@ -918,6 +971,39 @@ def reset_conversation():
 def reset_tasks():
     save_json(TASKS_LOG, {"tasks": []})
     return JSONResponse({"status": "reset", "tasks": {"tasks": []}})
+
+
+@app.post("/api/sim/reset-memories")
+def reset_memories():
+    reset_agent_memories()
+    return JSONResponse({"status": "reset", "memories": {"memories": []}})
+
+
+@app.post("/api/sim/reset-states")
+def reset_states():
+    reset_agent_states()
+    return JSONResponse({"status": "reset", "state": DEFAULT_AGENT_STATE})
+
+
+@app.post("/api/sim/reset-runtime")
+def reset_runtime():
+    global CURRENT_ROUND
+
+    CURRENT_ROUND = []
+    save_conversation([])
+    save_json(TASKS_LOG, {"tasks": []})
+    reset_agent_memories()
+    reset_agent_states()
+
+    return JSONResponse(
+        {
+            "status": "reset",
+            "conversation": [],
+            "tasks": {"tasks": []},
+            "memories": {"memories": []},
+            "state": DEFAULT_AGENT_STATE,
+        }
+    )
 
 
 @app.get("/api/agents")
