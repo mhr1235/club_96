@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>Club 96 Simulation</title>
+  <link rel="icon" type="image/png" href="/static/graphics/club96.png" />
   <link rel="stylesheet" href="/static/styles.css" />
   <style>
     pre {
@@ -255,13 +256,19 @@ function renderConversation(conversation, animateLast = false) {
 
         const data = await response.json();
 
+        if (!response.ok || data.result?.error) {
+          throw new Error(data.result?.error || data.error || `HTTP ${response.status}`);
+        }
+
         if (data.conversation) {
           renderConversation(data.conversation, true);
         }
 
         document.getElementById("status").textContent = `Finished ${data.agent}.`;
+        return data;
       } catch (error) {
         document.getElementById("status").textContent = `Error: ${error}`;
+        throw error;
       } finally {
         clearInterval(pollWhileRunning);
       }
@@ -272,7 +279,12 @@ function renderConversation(conversation, animateLast = false) {
 
       for (let i = 0; i < 3; i++) {
         document.getElementById("status").textContent = `Running turn ${i + 1} of 3...`;
-        await advanceSimulation();
+        try {
+          await advanceSimulation();
+        } catch (error) {
+          document.getElementById("status").textContent = `Stopped on turn ${i + 1}: ${error.message}`;
+          return;
+        }
       }
 
       document.getElementById("status").textContent = "Finished three turns.";

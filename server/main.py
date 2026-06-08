@@ -51,8 +51,8 @@ AGENT_CONFIG = {
     "alice": {
         "ollama_url": "http://localhost:11434",
         "model": "gemma3:4b",
-        "temperature": 0.9,
-        "num_predict": 220,
+        "temperature": 0.8,
+        "num_predict": 360,
         "min_response_length": 6,
     },
     "bob": {
@@ -162,6 +162,19 @@ def normalize_agent_name(value):
     if value in TURN_ORDER:
         return value
     return ""
+
+
+def parse_model_json(content):
+    try:
+        return json.loads(content)
+    except json.JSONDecodeError:
+        start = content.find("{")
+        end = content.rfind("}")
+
+        if start == -1 or end == -1 or end <= start:
+            raise
+
+        return json.loads(content[start:end + 1])
 
 
 def load_conversation():
@@ -679,8 +692,10 @@ The simulation is not only about planning.
 
 React to what the others have said.
 
-If Relevant Knowledge is available, let one concrete trace from it enter your response, even indirectly.
-You may use it as an anecdote, memory-like association, caution, comparison, image, or planning instinct.
+If Relevant Knowledge is available, actively look for a natural way to bring one concrete trace from it into your spoken response.
+Prefer visible specifics from Relevant Knowledge: proper nouns, places, events, archives, dates, communities, named people, venues, or lessons.
+Put the specific trace in speech when possible, not only in memory_update.
+You may use the trace as an anecdote, memory-like association, caution, comparison, image, or planning instinct.
 Do not cite it like a report.
 Do not force a full explanation.
 Let it leak into the conversation naturally.
@@ -689,7 +704,8 @@ You should respect other agents, but you should not automatically agree.
 If another agent's proposal conflicts with your core goals, challenge it.
 Offer alternatives or tradeoffs.
 
-Your speech should sound like a short text message: 1 sentence, usually 6-20 words.
+Your speech should sound like a short text message: usually 1 sentence.
+If Relevant Knowledge gives you a useful concrete detail, you may use 2 short sentences so that detail is visible to viewers.
 Stay strongly in character.
 Do not explain your reasoning.
 Do not summarize the situation.
@@ -725,6 +741,11 @@ Avoid circling. If the group has already discussed an idea, either:
 
 Do not merely say that something is worth exploring again.
 
+When using Relevant Knowledge:
+- Put the most interesting specific detail in speech when possible.
+- Do not hide the only proper noun, place, archive, event, date, or historical example inside memory_update.
+- memory_update should record what changed for the agent: a decision, commitment, objection, lesson, collaboration, or useful fact to remember.
+
 Return ONLY valid JSON.
 No markdown.
 No commentary.
@@ -733,13 +754,13 @@ The JSON must include all five top-level keys:
 speech, mood, action, memory_update, task_update.
 
 {{
-  "speech": "What the agent says aloud in response to the group conversation.",
+  "speech": "public line shown to viewers",
   "mood": "one-word mood",
   "action": {{
     "type": "short_action_type",
     "description": "what the agent decides to do next"
   }},
-  "memory_update": "one concrete memory as a string. Prefer decisions, commitments, objections, recruitment, collaboration, or completed work. Do not restate vague possibilities already discussed.",
+  "memory_update": "one concrete memory as a string, or an empty string",
   "task_update": {{
     "action": "create|support|object|join|recruit|leave|work|update|complete|rest|none",
     "title": "short task title",
@@ -847,7 +868,7 @@ For task_update, use action "none" unless the custom prompt explicitly asks you 
 
     content = response.json()["message"]["content"]
     try:
-        agent_output = json.loads(content)
+        agent_output = parse_model_json(content)
 
     except json.JSONDecodeError:
         print("INVALID JSON FROM MODEL:")
@@ -933,13 +954,16 @@ def simulation_tick():
     finally:
         ACTIVE_AGENT = ""
 
+    status = 502 if "error" in result else 200
+
     return JSONResponse(
         {
             "agent": agent_name,
             "result": result,
             "conversation": conversation,
             "tasks": load_json(TASKS_LOG, {"tasks": []}),
-        }
+        },
+        status_code=status,
     )
 
 

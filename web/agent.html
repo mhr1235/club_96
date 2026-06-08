@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>Agent Dialogue</title>
+  <link rel="icon" type="image/png" href="/static/graphics/club96.png" />
   <link rel="stylesheet" href="/static/styles.css" />
   <style>
     * {
@@ -40,6 +41,11 @@
       font-size: clamp(1.4rem, 2vw, 2.25rem);
       line-height: 1.2;
       margin-bottom: clamp(1.4rem, 3vw, 2.5rem);
+    }
+
+    .meta {
+
+      display: none;
     }
 
     .speech {
@@ -131,7 +137,12 @@
 
     function fitSpeechToViewport() {
       const speech = document.getElementById("speech");
-      const styles = getComputedStyle(document.getElementById("page"));
+      const page = document.getElementById("page");
+      if (!speech || !page) {
+        return;
+      }
+
+      const styles = getComputedStyle(page);
       const bottomPadding = parseFloat(styles.paddingBottom) || 0;
       const availableHeight = window.innerHeight - speech.offsetTop - bottomPadding - 12;
       const maxSize = getDisplayFontSize();
@@ -326,7 +337,12 @@
       }
 
       isThinking = nextIsThinking;
-      document.getElementById("page").classList.toggle("thinking", isThinking);
+      const page = document.getElementById("page");
+      if (!page) {
+        return;
+      }
+
+      page.classList.toggle("thinking", isThinking);
 
       if (isThinking) {
         startSpiralAnimation();
@@ -361,6 +377,10 @@
     }
 
     function typeText(element, text, speed = 18) {
+      if (!element) {
+        return;
+      }
+
       element.textContent = "";
       element.classList.add("cursor");
       isTyping = true;
@@ -414,12 +434,18 @@
         const latest = filtered[filtered.length - 1];
 
         document.title = `${titleize(agentName)} Dialogue`;
-        document.getElementById("page").className = `${agentName}${isThinking ? " thinking" : ""}`;
+        const page = document.getElementById("page");
+        const speech = document.getElementById("speech");
+        if (!page || !speech) {
+          return;
+        }
+
+        page.className = `${agentName}${isThinking ? " thinking" : ""}`;
         setText("agent-name", titleize(agentName));
 
         if (!latest) {
           setText("meta", "Waiting for output.");
-          document.getElementById("speech").classList.add("waiting");
+          speech.classList.add("waiting");
           setSpeech(`No dialogue yet for ${titleize(agentName)}.`);
           return;
         }
@@ -431,7 +457,7 @@
 
         latestTurnKey = turnKey;
         setText("meta", `Turn ${latest.turn} · Mood: ${latest.mood || "—"}`);
-        document.getElementById("speech").classList.remove("waiting");
+        speech.classList.remove("waiting");
         clearThinkingHold();
         typeSpeech(latest.speech || "No speech returned.");
       } catch (error) {
@@ -474,13 +500,19 @@
 
     loadAgentDialogue();
     loadThinkingStatus();
-    setInterval(loadAgentDialogue, pollIntervalMs);
-    setInterval(loadThinkingStatus, 500);
+    const dialogueIntervalId = setInterval(loadAgentDialogue, pollIntervalMs);
+    const thinkingIntervalId = setInterval(loadThinkingStatus, 500);
     window.addEventListener("resize", fitSpeechToViewport);
     window.addEventListener("resize", resizeSpiralCanvas);
+    window.addEventListener("pagehide", () => {
+      clearInterval(dialogueIntervalId);
+      clearInterval(thinkingIntervalId);
+      cancelAnimationFrame(spiralFrameId);
+      clearThinkingHold();
+    });
 
     if (document.fonts) {
-      document.fonts.ready.then(fitSpeechToViewport);
+      document.fonts.ready.then(fitSpeechToViewport).catch(() => {});
     }
   </script>
 </body>
