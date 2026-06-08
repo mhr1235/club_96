@@ -67,7 +67,7 @@ AGENT_CONFIG = {
         #"ollama_url": "http://100.115.49.17:11434",
         "model": "mistral:7b",
         "temperature": 1.05,
-        "num_predict": 260,
+        "num_predict": 420,
         "min_response_length": 6,
     },
 }
