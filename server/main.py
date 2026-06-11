@@ -49,7 +49,8 @@ app.mount("/static", StaticFiles(directory=WEB), name="static")
 
 AGENT_CONFIG = {
     "alice": {
-        "ollama_url": "http://localhost:11434",
+        #"ollama_url": "http://localhost:11434",
+        "ollama_url": "http://100.105.66.12:11434",
         "model": "gemma3:4b",
         "temperature": 0.8,
         "num_predict": 360,
