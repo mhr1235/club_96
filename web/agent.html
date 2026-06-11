@@ -111,6 +111,8 @@
 
   <script>
     const pollIntervalMs = 1500;
+    const statusPollIntervalMs = 1000;
+    const fetchTimeoutMs = 5000;
     let latestTurnKey = "";
     let isTyping = false;
     let isThinking = false;
@@ -118,6 +120,23 @@
     let spiralIsAnimating = false;
     let holdThinkingUntilNextDialogue = false;
     let thinkingHoldTimeoutId = 0;
+    let dialoguePollInFlight = false;
+    let statusPollInFlight = false;
+    let lastAgentWasActive = false;
+
+    async function fetchWithTimeout(url, options = {}) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), fetchTimeoutMs);
+
+      try {
+        return await fetch(url, {
+          ...options,
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    }
 
     function titleize(value) {
       return value.charAt(0).toUpperCase() + value.slice(1);
@@ -414,14 +433,16 @@
     }
 
     async function loadAgentDialogue() {
-      if (isTyping) {
+      if (isTyping || dialoguePollInFlight) {
         return;
       }
+
+      dialoguePollInFlight = true;
 
       try {
         const agentName = getAgentNameFromPath();
 
-        const response = await fetch("/api/sim/conversation", {
+        const response = await fetchWithTimeout("/api/sim/conversation", {
           cache: "no-store"
         });
 
@@ -462,13 +483,21 @@
         typeSpeech(latest.speech || "No speech returned.");
       } catch (error) {
         console.error("Agent dialogue poll failed:", error);
+      } finally {
+        dialoguePollInFlight = false;
       }
     }
 
     async function loadThinkingStatus() {
+      if (statusPollInFlight) {
+        return;
+      }
+
+      statusPollInFlight = true;
+
       try {
         const agentName = getAgentNameFromPath();
-        const response = await fetch("/api/sim/status", {
+        const response = await fetchWithTimeout("/api/sim/status", {
           cache: "no-store"
         });
 
@@ -480,9 +509,15 @@
         const agentIsActive = status.active_agent === agentName;
 
         if (agentIsActive) {
+          lastAgentWasActive = true;
           clearThinkingHold();
           setThinking(!isTyping);
           return;
+        }
+
+        if (lastAgentWasActive) {
+          lastAgentWasActive = false;
+          loadAgentDialogue();
         }
 
         if (isThinking && !isTyping) {
@@ -495,13 +530,15 @@
         }
       } catch (error) {
         console.error("Thinking status poll failed:", error);
+      } finally {
+        statusPollInFlight = false;
       }
     }
 
     loadAgentDialogue();
     loadThinkingStatus();
     const dialogueIntervalId = setInterval(loadAgentDialogue, pollIntervalMs);
-    const thinkingIntervalId = setInterval(loadThinkingStatus, 500);
+    const thinkingIntervalId = setInterval(loadThinkingStatus, statusPollIntervalMs);
     window.addEventListener("resize", fitSpeechToViewport);
     window.addEventListener("resize", resizeSpiralCanvas);
     window.addEventListener("pagehide", () => {
@@ -509,6 +546,17 @@
       clearInterval(thinkingIntervalId);
       cancelAnimationFrame(spiralFrameId);
       clearThinkingHold();
+    });
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState !== "visible") {
+        return;
+      }
+
+      dialoguePollInFlight = false;
+      statusPollInFlight = false;
+      resizeSpiralCanvas();
+      loadAgentDialogue();
+      loadThinkingStatus();
     });
 
     if (document.fonts) {
