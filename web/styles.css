@@ -84,3 +84,13 @@ main.mallory {
 .mallory .speech {
   font-family: var(--font-mallory);
 }
+
+/* Fullscreen Alice agent display only */
+main.alice .speech {
+  font-size: clamp(4.5rem, 7.5vw, 8.5rem) !important;
+}
+
+/* Fullscreen Mallory agent display only */
+main.mallory .speech {
+  font-size: clamp(4.5rem, 7.5vw, 8.5rem) !important;
+}

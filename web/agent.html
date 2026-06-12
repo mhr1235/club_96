@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <title>Agent Dialogue</title>
   <link rel="icon" type="image/png" href="/static/graphics/club96.png" />
-  <link rel="stylesheet" href="/static/styles.css" />
+  <link rel="stylesheet" href="/static/styles.css?v=agent-font-controls-1" />
   <style>
     * {
       box-sizing: border-box;
@@ -150,6 +150,12 @@
     }
 
     function getDisplayFontSize() {
+      const speech = document.getElementById("speech");
+      if (speech) {
+        speech.style.fontSize = "";
+        return parseFloat(getComputedStyle(speech).fontSize) || 48;
+      }
+
       const widthSize = window.innerWidth * 0.036;
       return Math.max(32, Math.min(widthSize, 80));
     }
