@@ -54,6 +54,24 @@
       color: white;
     }
 
+    button.active {
+      background: var(--color-page-text);
+      color: var(--color-page-bg);
+    }
+
+    .auto-option {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      color: var(--color-muted);
+      font-size: 0.95rem;
+    }
+
+    .auto-option input {
+      width: 1rem;
+      height: 1rem;
+    }
+
     .status {
       color: var(--color-muted);
       margin: 1rem 0;
@@ -129,6 +147,11 @@
   <div class="controls">
     <button onclick="advanceSimulation()">Advance Simulation</button>
     <button onclick="runThreeTurns()">Run 3 Turns</button>
+    <button id="auto-run-button" onclick="toggleAutoRun()">Auto Run</button>
+    <label class="auto-option">
+      <input id="auto-reset-on-error" type="checkbox" />
+      Auto reset on model error
+    </label>
     <button class="danger" onclick="resetSimulation()">Reset Conversation</button>
     <button class="danger" onclick="resetTasks()">Reset Tasks</button>
     <button class="danger" onclick="resetMemories()">Reset Memories</button>
@@ -146,6 +169,24 @@
   <script>
     let latestConversationKey = "";
     let isTyping = false;
+    let autoRunActive = false;
+    let autoRunBatch = 0;
+    const autoRunPauseMs = 2000;
+    const autoRestartPauseMs = 3000;
+
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function setStatus(message) {
+      document.getElementById("status").textContent = message;
+    }
+
+    function updateAutoRunButton() {
+      const button = document.getElementById("auto-run-button");
+      button.textContent = autoRunActive ? "Stop Auto Run" : "Auto Run";
+      button.classList.toggle("active", autoRunActive);
+    }
 
     function getConversationKey(conversation) {
       if (!conversation || conversation.length === 0) {
@@ -246,7 +287,7 @@ function renderConversation(conversation, animateLast = false) {
     }
 
     async function advanceSimulation() {
-      document.getElementById("status").textContent = "Advancing simulation...";
+      setStatus("Advancing simulation...");
       const pollWhileRunning = setInterval(() => loadConversation(true), 1000);
 
       try {
@@ -264,30 +305,110 @@ function renderConversation(conversation, animateLast = false) {
           renderConversation(data.conversation, true);
         }
 
-        document.getElementById("status").textContent = `Finished ${data.agent}.`;
+        setStatus(`Finished ${data.agent}.`);
         return data;
       } catch (error) {
-        document.getElementById("status").textContent = `Error: ${error}`;
+        setStatus(`Error: ${error}`);
         throw error;
       } finally {
         clearInterval(pollWhileRunning);
       }
     }
 
-    async function runThreeTurns() {
-      document.getElementById("status").textContent = "Running three turns...";
+    async function runThreeTurns(options = {}) {
+      const throwOnError = options.throwOnError || false;
+      const label = options.label || "Running three turns";
+      setStatus(`${label}...`);
 
       for (let i = 0; i < 3; i++) {
-        document.getElementById("status").textContent = `Running turn ${i + 1} of 3...`;
+        setStatus(`${label}: turn ${i + 1} of 3...`);
         try {
           await advanceSimulation();
         } catch (error) {
-          document.getElementById("status").textContent = `Stopped on turn ${i + 1}: ${error.message}`;
-          return;
+          setStatus(`Stopped on turn ${i + 1}: ${error.message}`);
+          if (throwOnError) {
+            throw error;
+          }
+          return false;
         }
       }
 
-      document.getElementById("status").textContent = "Finished three turns.";
+      setStatus("Finished three turns.");
+      return true;
+    }
+
+    async function resetRuntimeSilently() {
+      const response = await fetch("/api/sim/reset-runtime", {
+        method: "POST"
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || `HTTP ${response.status}`);
+      }
+
+      renderConversation(data.conversation, false);
+      return data;
+    }
+
+    async function toggleAutoRun() {
+      if (autoRunActive) {
+        autoRunActive = false;
+        updateAutoRunButton();
+        setStatus("Stopping auto run after the current request finishes...");
+        return;
+      }
+
+      autoRunActive = true;
+      autoRunBatch = 0;
+      updateAutoRunButton();
+      runAutoLoop();
+    }
+
+    async function runAutoLoop() {
+      while (autoRunActive) {
+        autoRunBatch++;
+
+        try {
+          await runThreeTurns({
+            throwOnError: true,
+            label: `Auto batch ${autoRunBatch}`
+          });
+
+          if (!autoRunActive) break;
+
+          setStatus(`Auto batch ${autoRunBatch} finished. Next batch in ${autoRunPauseMs / 1000}s...`);
+          await sleep(autoRunPauseMs);
+        } catch (error) {
+          if (!autoRunActive) break;
+
+          const shouldReset = document.getElementById("auto-reset-on-error").checked;
+
+          if (!shouldReset) {
+            autoRunActive = false;
+            setStatus(`Auto run stopped: ${error.message}`);
+            break;
+          }
+
+          setStatus(`Auto run hit an error: ${error.message}. Resetting runtime...`);
+
+          try {
+            await resetRuntimeSilently();
+            if (!autoRunActive) break;
+
+            setStatus(`Runtime reset. Restarting auto run in ${autoRestartPauseMs / 1000}s...`);
+            await sleep(autoRestartPauseMs);
+          } catch (resetError) {
+            autoRunActive = false;
+            setStatus(`Auto run stopped. Reset failed: ${resetError.message}`);
+            break;
+          }
+        }
+      }
+
+      autoRunActive = false;
+      updateAutoRunButton();
     }
 
     async function resetSimulation() {
@@ -300,7 +421,7 @@ function renderConversation(conversation, animateLast = false) {
 
       const data = await response.json();
       renderConversation(data.conversation, false);
-      document.getElementById("status").textContent = "Conversation reset.";
+      setStatus("Conversation reset.");
     }
 
     async function postReset(endpoint, message) {
@@ -318,21 +439,21 @@ function renderConversation(conversation, animateLast = false) {
       const data = await postReset("/api/sim/reset-tasks", "Reset all shared tasks/goals?");
       if (!data) return;
 
-      document.getElementById("status").textContent = "Tasks reset.";
+      setStatus("Tasks reset.");
     }
 
     async function resetMemories() {
       const data = await postReset("/api/sim/reset-memories", "Reset all agent memories?");
       if (!data) return;
 
-      document.getElementById("status").textContent = "Memories reset.";
+      setStatus("Memories reset.");
     }
 
     async function resetStates() {
       const data = await postReset("/api/sim/reset-states", "Reset all agent states to neutral/full energy?");
       if (!data) return;
 
-      document.getElementById("status").textContent = "Agent states reset.";
+      setStatus("Agent states reset.");
     }
 
     async function resetRuntime() {
@@ -343,10 +464,11 @@ function renderConversation(conversation, animateLast = false) {
       if (!data) return;
 
       renderConversation(data.conversation, false);
-      document.getElementById("status").textContent = "All runtime files reset.";
+      setStatus("All runtime files reset.");
     }
 
     loadConversation();
+    updateAutoRunButton();
     setInterval(() => loadConversation(true), 1500);
   </script>
 </body>
