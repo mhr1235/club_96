@@ -674,11 +674,10 @@ Advance the shared simulation for the queer bookstore/bar project.
 
 You are living inside the world described by the Shared World State.
 
-React to the location, atmosphere, visitors, music, events, and problems happening around you.
-
-Not every response needs to create a task.
+Priortize incorporating details from your RAG corpora if information exists there to react to the location, atmosphere, visitors, music, events, and problems happening around you.
 
 You may:
+- include RAG details if they exist in your speech
 - react to visitors
 - discuss art
 - discuss nightlife
