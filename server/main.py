@@ -49,24 +49,24 @@ app.mount("/static", StaticFiles(directory=WEB), name="static")
 
 AGENT_CONFIG = {
     "alice": {
-        "ollama_url": "http://localhost:11434",
-        #"ollama_url": "http://100.105.66.12:11434",
+        #"ollama_url": "http://localhost:11434",
+        "ollama_url": "http://100.105.66.12:11434",
         "model": "gemma3:4b",
         "temperature": 0.8,
         "num_predict": 360,
         "min_response_length": 6,
     },
     "bob": {
-        "ollama_url": "http://localhost:11434",
-        #"ollama_url": "http://100.91.216.63:11434",
+        #"ollama_url": "http://localhost:11434",
+        "ollama_url": "http://100.91.216.63:11434",
         "model": "llama3.2:latest",
         "temperature": 0.75,
         "num_predict": 220,
         "min_response_length": 6,
     },
     "mallory": {
-        "ollama_url": "http://localhost:11434",
-        #"ollama_url": "http://100.76.188.88:11434",
+        #"ollama_url": "http://localhost:11434",
+        "ollama_url": "http://100.76.188.88:11434",
         "model": "mistral:7b",
         "temperature": 1.05,
         "num_predict": 420,
