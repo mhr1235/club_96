@@ -898,10 +898,13 @@ def agent_tick(agent_name: str):
 
     try:
         result = run_agent(agent_name, conversation)
+    except Exception as error:
+        print(f"Agent tick failed for {agent_name}: {error}")
+        result = {"error": f"{agent_name} failed: {error}"}
     finally:
         ACTIVE_AGENT = ""
 
-    status = 404 if "error" in result else 200
+    status = 502 if "error" in result else 200
     return JSONResponse(result, status_code=status)
 
 
@@ -923,10 +926,13 @@ def agent_prompt(agent_name: str, data: dict = Body(default=None)):
 
     try:
         result = run_agent(agent_name, conversation, custom_prompt=custom_prompt)
+    except Exception as error:
+        print(f"Prompt failed for {agent_name}: {error}")
+        result = {"error": f"{agent_name} failed: {error}"}
     finally:
         ACTIVE_AGENT = ""
 
-    status = 404 if "error" in result else 200
+    status = 502 if "error" in result else 200
     return JSONResponse(result, status_code=status)
 
 

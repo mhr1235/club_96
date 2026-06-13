@@ -159,6 +159,7 @@
     function setAgentOutput(agentName, data) {
       if (data.error) {
         document.getElementById(`${agentName}-speech`).textContent = data.error;
+        document.getElementById(`${agentName}-mood`).textContent = "error";
         return;
       }
 
@@ -187,9 +188,20 @@
           },
           body: JSON.stringify({ prompt }),
         });
-        const data = await response.json();
+
+        const responseText = await response.text();
+        let data;
+
+        try {
+          data = JSON.parse(responseText);
+        } catch (parseError) {
+          throw new Error(`HTTP ${response.status}: ${responseText.slice(0, 200)}`);
+        }
+
         setAgentOutput(agentName, data);
-        document.getElementById("status").textContent = `Finished ${agentName}.`;
+        document.getElementById("status").textContent = response.ok
+          ? `Finished ${agentName}.`
+          : `Error asking ${agentName}.`;
       } catch (error) {
         document.getElementById(`${agentName}-speech`).textContent = `Error: ${error}`;
         document.getElementById("status").textContent = `Error asking ${agentName}.`;
