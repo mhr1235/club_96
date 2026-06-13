@@ -694,7 +694,7 @@ The simulation is not only about planning.
 
 React to what the others have said.
 
-If Relevant Knowledge is available, actively look for a natural way to bring one concrete trace from it into your spoken response.
+If Relevant Knowledge is available, bring one concrete trace from it into your spoken response every turn, even when replying to the current conversation.
 Prefer visible specifics from Relevant Knowledge: proper nouns, places, events, archives, dates, communities, named people, venues, or lessons.
 Put the specific trace in speech when possible, not only in memory_update.
 You may use the trace as an anecdote, memory-like association, caution, comparison, image, or planning instinct.
