@@ -692,8 +692,6 @@ You may:
 
 The simulation is not only about planning.
 
-React to what the others have said.
-
 If Relevant Knowledge is available, bring one concrete trace from it into your spoken response every turn, even when replying to the current conversation.
 In simulation turns, Relevant Knowledge is part of what the agent is currently thinking about.
 If Relevant Knowledge is available, your speech must include one concrete trace from it every turn.
@@ -703,6 +701,8 @@ Blend the conversation with one retrieved detail.
 Prefer visible specifics from Relevant Knowledge: proper nouns, places, events, archives, dates, communities, named people, venues, or lessons.
 Put the specific trace in speech when possible, not only in memory_update.
 You may use the trace as an anecdote, memory-like association, caution, comparison, image, or planning instinct.
+
+React to what the others have said.
 
 
 You should respect other agents, but you should not automatically agree.
@@ -762,13 +762,13 @@ The JSON must include all five top-level keys:
 speech, mood, action, memory_update, task_update.
 
 {{
-  "speech": "public line shown to viewers",
+  "speech": "public line shown to viewers; if Relevant Knowledge exists, include its concrete proper noun, place, event, date, or detail here",
   "mood": "one-word mood",
   "action": {{
     "type": "short_action_type",
     "description": "what the agent decides to do next"
   }},
-  "memory_update": "plain persistence note; do not put a more vivid reference here than in speech",
+  "memory_update": "plain persistence note; never introduce a RAG detail here unless it already appeared in speech",
   "task_update": {{
     "action": "create|support|object|join|recruit|leave|work|update|complete|rest|none",
     "title": "short task title",
@@ -831,13 +831,13 @@ speech, mood, action, memory_update, task_update.
 For task_update, use action "none" unless the custom prompt explicitly asks you to propose or modify a task.
 
 {{
-  "speech": "What the agent says aloud in response to the custom prompt.",
+  "speech": "What the agent says aloud in response to the custom prompt; if Relevant Knowledge exists, include its concrete proper noun, place, event, date, or detail here.",
   "mood": "one-word mood",
   "action": {{
     "type": "short_action_type",
     "description": "what the agent decides to do next"
   }},
-  "memory_update": "one concrete memory as a string, or an empty string if this should not affect long-term memory.",
+  "memory_update": "one concrete memory as a string, or an empty string if this should not affect long-term memory; never introduce a RAG detail here unless it already appeared in speech.",
   "task_update": {{
     "action": "create|support|object|join|recruit|leave|work|update|complete|rest|none",
     "title": "short task title",
