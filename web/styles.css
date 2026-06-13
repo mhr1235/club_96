@@ -94,3 +94,8 @@ main.alice .speech {
 main.mallory .speech {
   font-size: clamp(0.5rem, 3.5vw, 4.5rem) !important;
 }
+
+/* Fullscreen Bob agent display only */
+main.bob .speech {
+  font-size: clamp(1.5rem, 3vw, 4rem) !important;
+}
