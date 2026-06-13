@@ -695,6 +695,11 @@ The simulation is not only about planning.
 React to what the others have said.
 
 If Relevant Knowledge is available, bring one concrete trace from it into your spoken response every turn, even when replying to the current conversation.
+In simulation turns, Relevant Knowledge is part of what the agent is currently thinking about.
+If Relevant Knowledge is available, your speech must include one concrete trace from it every turn.
+This requirement is as important as responding to the recent conversation.
+Do not answer only from the recent conversation when Relevant Knowledge is available.
+Blend the conversation with one retrieved detail.
 Prefer visible specifics from Relevant Knowledge: proper nouns, places, events, archives, dates, communities, named people, venues, or lessons.
 Put the specific trace in speech when possible, not only in memory_update.
 You may use the trace as an anecdote, memory-like association, caution, comparison, image, or planning instinct.
