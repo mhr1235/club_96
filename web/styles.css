@@ -87,7 +87,7 @@ main.mallory {
 
 /* Fullscreen Alice agent display only */
 main.alice .speech {
-  font-size: clamp(2.5rem, 5.5vw, 6.5rem) !important;
+  font-size: clamp(2.0rem, 5.0vw, 6.0rem) !important;
 }
 
 /* Fullscreen Mallory agent display only */
