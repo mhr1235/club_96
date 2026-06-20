@@ -1,0 +1,6 @@
+pypdf
+pymupdf
+pillow
+pytesseract
+beautifulsoup4
+markdownify

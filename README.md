@@ -51,13 +51,25 @@ Create and activate a virtual environment:
 
 ```bash
 python -m venv .venv
-source .venv/bin/activate.fish
+source .venv/bin/activate
 ```
 
 Install dependencies:
 
 ```bash
-pip install fastapi uvicorn requests
+pip install -r requirements.txt
+```
+
+Optional tools for chunking PDFs, images, HTML, and scanned source files:
+
+```bash
+pip install -r requirements-dev.txt
+```
+
+Some source-processing workflows also need system tools:
+
+```bash
+brew install poppler tesseract ffmpeg
 ```
 
 ## Run
