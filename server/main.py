@@ -42,7 +42,16 @@ RAG_COLLECTION_NAME = "club96_rag"
 RAG_OLLAMA_URL = "http://localhost:11434"
 RAG_EMBED_MODEL = "nomic-embed-text"
 RAG_RESULTS = 5
+RAG_CANDIDATE_RESULTS = 15
 RAG_DISTANCE_THRESHOLD = 475
+
+AGENT_RAG_QUERY_EXPANSIONS = {
+    "alice": (
+        "Alice theory lens: queer theory, queer methods, decolonial critique, "
+        "archive ethics, coalition across difference, lesbian and gay studies, "
+        "sex gender desire, visual culture, local queer infrastructure."
+    ),
+}
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory=WEB), name="static")
@@ -298,15 +307,24 @@ def build_custom_rag_query(agent_name, custom_prompt, tasks, world_state):
     )
 
 
+def expand_rag_query(agent_name, query):
+    expansion = AGENT_RAG_QUERY_EXPANSIONS.get(agent_name)
+
+    if not expansion:
+        return query
+
+    return "\n\n".join([query, expansion])
+
+
 def retrieve_agent_knowledge(agent_name, query):
     try:
         client = chromadb.PersistentClient(path=str(CHROMA_PATH))
         collection = client.get_collection(name=RAG_COLLECTION_NAME)
-        query_embedding = embed_rag_query(query)
+        query_embedding = embed_rag_query(expand_rag_query(agent_name, query))
 
         results = collection.query(
             query_embeddings=[query_embedding],
-            n_results=RAG_RESULTS,
+            n_results=RAG_CANDIDATE_RESULTS,
             where={"agent": agent_name},
             include=["documents", "metadatas", "distances"],
         )
@@ -319,14 +337,45 @@ def retrieve_agent_knowledge(agent_name, query):
     distances = results.get("distances", [[]])[0]
     knowledge_blocks = []
 
+    selected = []
+    seen_source_files = set()
+
     for document, metadata, distance in zip(documents, metadatas, distances):
         if distance > RAG_DISTANCE_THRESHOLD:
             continue
 
+        source_file = metadata.get("source_file", "")
+
+        if source_file in seen_source_files and len(selected) < RAG_RESULTS:
+            continue
+
+        selected.append((document, metadata, distance))
+        seen_source_files.add(source_file)
+
+        if len(selected) >= RAG_RESULTS:
+            break
+
+    if len(selected) < RAG_RESULTS:
+        for document, metadata, distance in zip(documents, metadatas, distances):
+            if distance > RAG_DISTANCE_THRESHOLD:
+                continue
+
+            candidate = (document, metadata, distance)
+
+            if candidate in selected:
+                continue
+
+            selected.append(candidate)
+
+            if len(selected) >= RAG_RESULTS:
+                break
+
+    for document, metadata, distance in selected:
         knowledge_blocks.append(
             "\n".join(
                 [
                     f"Source: {metadata.get('source', '')}",
+                    f"Source File: {metadata.get('source_file', '')}",
                     f"URL: {metadata.get('url', '')}",
                     f"Tags: {metadata.get('tags', '')}",
                     f"Relevance distance: {distance:.2f}",
@@ -697,6 +746,7 @@ If Relevant Knowledge is available, your speech must include one concrete trace 
 This requirement is as important as responding to the recent conversation.
 Do not answer only from the recent conversation when Relevant Knowledge is available.
 Blend the conversation with one retrieved detail.
+Avoid using the same source, event, or example repeatedly across adjacent turns unless it is directly relevant.
 Prefer visible specifics from Relevant Knowledge: proper nouns, places, events, archives, dates, communities, named people, venues, or lessons.
 Put the specific trace in speech when possible, not only in memory_update.
 You may use the trace as an anecdote, memory-like association, caution, comparison, image, or planning instinct.
