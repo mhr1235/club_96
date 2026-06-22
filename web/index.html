@@ -4,96 +4,8 @@
   <meta charset="UTF-8" />
   <title>Club_96</title>
   <link rel="icon" type="image/png" href="/static/graphics/club96.png" />
-  <style>
-    body {
-      font-family: system-ui, sans-serif;
-      background: #111;
-      color: #f4f4f4;
-      padding: 2rem;
-      max-width: 1000px;
-      margin: auto;
-    }
-
-    h1 {
-      margin-bottom: 0.25rem;
-    }
-
-    .subtitle {
-      color: #aaa;
-      margin-bottom: 1.5rem;
-    }
-
-    button {
-      padding: 0.8rem 1rem;
-      border-radius: 999px;
-      border: 0;
-      cursor: pointer;
-      font-weight: bold;
-    }
-
-    textarea {
-      box-sizing: border-box;
-      width: 100%;
-      min-height: 8rem;
-      resize: vertical;
-      border: 1px solid #444;
-      border-radius: 12px;
-      padding: 0.9rem;
-      background: #111;
-      color: #f4f4f4;
-      font: inherit;
-      line-height: 1.45;
-      margin: 0.5rem 0 0.8rem;
-    }
-
-    textarea:focus {
-      outline: 2px solid #888;
-      outline-offset: 2px;
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 1rem;
-    }
-
-    .card {
-      border: 1px solid #444;
-      border-radius: 16px;
-      padding: 1.5rem;
-      background: #1c1c1c;
-    }
-
-    .label {
-      color: #aaa;
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      margin-top: 1rem;
-      letter-spacing: 0.05em;
-    }
-
-    .speech {
-      font-size: 1.05rem;
-      line-height: 1.5;
-    }
-
-    pre {
-      white-space: pre-wrap;
-      background: #000;
-      padding: 1rem;
-      border-radius: 12px;
-      overflow-x: auto;
-    }
-
-    .status {
-      color: #aaa;
-      margin: 1rem 0;
-    }
-
-    .prompt-button {
-      margin-bottom: 1rem;
-    }
-  </style>
+  <link rel="stylesheet" href="/static/styles.css" />
+  <link rel="stylesheet" href="/static/prompt.css" />
 </head>
 <body>
   <h1>Club_96</h1>
@@ -102,7 +14,7 @@
   <div id="status" class="status">Ready.</div>
 
   <div class="grid">
-    <div class="card" id="card-alice">
+    <div class="card agent-card agent-card-alice" id="card-alice">
       <h2>Alice</h2>
       <label class="label" for="alice-prompt">Custom Prompt</label>
       <textarea id="alice-prompt" placeholder="Ask Alice something directly..."></textarea>
@@ -117,7 +29,7 @@
       <div id="alice-memory">—</div>
     </div>
 
-    <div class="card" id="card-bob">
+    <div class="card agent-card agent-card-bob" id="card-bob">
       <h2>Bob</h2>
       <label class="label" for="bob-prompt">Custom Prompt</label>
       <textarea id="bob-prompt" placeholder="Ask Bob something directly..."></textarea>
@@ -132,7 +44,7 @@
       <div id="bob-memory">—</div>
     </div>
 
-    <div class="card" id="card-mallory">
+    <div class="card agent-card agent-card-mallory" id="card-mallory">
       <h2>Mallory</h2>
       <label class="label" for="mallory-prompt">Custom Prompt</label>
       <textarea id="mallory-prompt" placeholder="Ask Mallory something directly..."></textarea>

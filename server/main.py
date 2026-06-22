@@ -62,7 +62,7 @@ AGENT_CONFIG = {
         #"ollama_url": "http://100.105.66.12:11434",
         "model": "gemma3:4b",
         "temperature": 0.8,
-        "num_predict": 360,
+        "num_predict": 520,
         "min_response_length": 6,
     },
     "bob": {
@@ -70,7 +70,7 @@ AGENT_CONFIG = {
         #"ollama_url": "http://100.91.216.63:11434",
         "model": "llama3.2:latest",
         "temperature": 0.75,
-        "num_predict": 220,
+        "num_predict": 420,
         "min_response_length": 6,
     },
     "mallory": {
@@ -78,7 +78,7 @@ AGENT_CONFIG = {
         #"ollama_url": "http://100.76.188.88:11434",
         "model": "mistral:7b",
         "temperature": 1.05,
-        "num_predict": 420,
+        "num_predict": 560,
         "min_response_length": 6,
     },
 }
@@ -186,6 +186,85 @@ def parse_model_json(content):
             raise
 
         return json.loads(content[start:end + 1])
+
+
+def repair_model_json(content, config):
+    payload = {
+        "model": config["model"],
+        "messages": [
+            {
+                "role": "system",
+                "content": (
+                    "You repair malformed JSON. Return only one valid JSON object. "
+                    "Do not add markdown, comments, or explanation."
+                ),
+            },
+            {
+                "role": "user",
+                "content": f"""
+Repair this model output into valid JSON with exactly these top-level keys:
+speech, mood, action, memory_update, task_update.
+
+The action value must be an object with keys: type, description.
+The task_update value must be an object with keys:
+action, title, owner, target, status, progress, energy_cost, energy_reward, recruitment_note.
+
+If any field is missing, fill it with an empty string, 0, or action "none" as appropriate.
+
+Malformed output:
+{content}
+""",
+            },
+        ],
+        "stream": False,
+        "format": "json",
+        "options": {
+            "temperature": 0,
+            "num_predict": 900,
+        },
+    }
+
+    response = requests.post(
+        f'{config["ollama_url"]}/api/chat',
+        json=payload,
+        timeout=120,
+    )
+    response.raise_for_status()
+    return parse_model_json(response.json()["message"]["content"])
+
+
+def normalize_agent_output(agent_output, agent_name):
+    if not isinstance(agent_output, dict):
+        agent_output = {}
+
+    action = agent_output.get("action", {})
+    if not isinstance(action, dict):
+        action = {}
+
+    task_update = agent_output.get("task_update", {})
+    if not isinstance(task_update, dict):
+        task_update = {}
+
+    return {
+        "speech": normalize_text(agent_output.get("speech", "")),
+        "mood": normalize_text(agent_output.get("mood", "")) or "neutral",
+        "action": {
+            "type": normalize_text(action.get("type", "none")) or "none",
+            "description": normalize_text(action.get("description", "")),
+        },
+        "memory_update": normalize_text(agent_output.get("memory_update", "")),
+        "task_update": {
+            "action": normalize_text(task_update.get("action", "none")) or "none",
+            "title": normalize_text(task_update.get("title", "")),
+            "owner": normalize_agent_name(task_update.get("owner")) or agent_name,
+            "target": normalize_agent_name(task_update.get("target")),
+            "status": normalize_text(task_update.get("status", "")),
+            "progress": task_update.get("progress", 0),
+            "energy_cost": task_update.get("energy_cost", 0),
+            "energy_reward": task_update.get("energy_reward", 0),
+            "recruitment_note": normalize_text(task_update.get("recruitment_note", "")),
+        },
+    }
 
 
 def load_conversation():
@@ -406,9 +485,39 @@ def asks_for_reference_material(text):
         "historical examples",
         "from your material",
         "from your notes",
+        "rag corpus",
+        "corpus",
+        "knowledge base",
+        "training corpus",
     ]
 
     return any(term in lowered for term in reference_terms)
+
+
+def asks_for_workshop_intro(text):
+    lowered = normalize_text(text).lower()
+    intro_terms = ["introduce yourself", "intro", "introduction", "workshop participants"]
+    corpus_terms = ["rag", "corpus", "knowledge base", "sources", "reference material"]
+
+    return any(term in lowered for term in intro_terms) and any(
+        term in lowered for term in corpus_terms
+    )
+
+
+def asks_to_modify_task(text):
+    lowered = normalize_text(text).lower()
+    task_terms = [
+        "create a task",
+        "propose a task",
+        "support the task",
+        "join the task",
+        "recruit",
+        "work on",
+        "complete the task",
+        "update the task",
+    ]
+
+    return any(term in lowered for term in task_terms)
 
 
 def is_useful_memory(memory_update):
@@ -664,6 +773,7 @@ def run_agent(agent_name: str, conversation=None, custom_prompt=None):
     retrieved_knowledge = retrieve_agent_knowledge(agent_name, rag_query)
     rag_notes = combine_knowledge(static_rag_notes, retrieved_knowledge)
     custom_prompt_needs_sources = custom_prompt and asks_for_reference_material(custom_prompt)
+    custom_prompt_wants_intro = custom_prompt and asks_for_workshop_intro(custom_prompt)
 
     if custom_prompt_needs_sources and not normalize_text(rag_notes):
         return {
@@ -687,6 +797,14 @@ def run_agent(agent_name: str, conversation=None, custom_prompt=None):
             },
         }
 
+    source_grounding_rule = (
+        "For this custom prompt, Character, Memory, Tasks, and World State may shape voice and persona, "
+        "but they are not the RAG corpus. When describing sources or the RAG corpus, name only material "
+        "that appears in Relevant Knowledge or Retrieved Reference Material."
+        if custom_prompt_needs_sources
+        else ""
+    )
+
     prompt = f"""
 {character}
 
@@ -704,6 +822,9 @@ def run_agent(agent_name: str, conversation=None, custom_prompt=None):
 
 ## Relevant Knowledge
 {rag_notes}
+
+## Source Grounding Rule
+{source_grounding_rule}
 
 ## Recent Conversation
 {recent_conversation}
@@ -834,6 +955,16 @@ speech, mood, action, memory_update, task_update.
 
     if custom_prompt:
         retrieved_reference_section = ""
+        custom_response_style = (
+            "Your speech should be a workshop introduction: 3-4 sentences, warm and vivid, "
+            "still in character, around 90-140 words. Name your persona, explain what kinds of sources are in your RAG corpus, "
+            "mention at least three concrete proper nouns, places, texts, events, or archives from the Retrieved Reference Material, "
+            "and end by inviting participants to ask you about the corpus."
+            if custom_prompt_wants_intro
+            else (
+                "Your speech should sound like a short text message: 1 sentence, usually 6-20 words."
+            )
+        )
 
         if custom_prompt_needs_sources:
             retrieved_reference_section = f"""
@@ -843,6 +974,7 @@ Retrieved Reference Material:
 For this custom prompt, your answer must be grounded only in the Retrieved Reference Material above.
 Your speech must name at least one proper noun, place, source, or date that appears verbatim in the Retrieved Reference Material.
 Do not substitute similar Houston institutions or plausible examples.
+When describing your RAG corpus, do not name sources, archives, texts, or people that are absent from the Retrieved Reference Material, even if they appear in your Character or Memory.
 """
 
         user_prompt = f"""
@@ -863,11 +995,11 @@ Custom prompt:
 
 {retrieved_reference_section}
 
-Your speech should sound like a short text message: 1 sentence, usually 6-20 words.
+{custom_response_style}
 Stay strongly in character.
 Do not explain your reasoning.
 Do not summarize the situation.
-Say one vivid, specific thing in your own voice.
+Say vivid, specific things in your own voice.
 Your speech should be at least {config["min_response_length"]} words.
 
 Return ONLY valid JSON.
@@ -911,7 +1043,9 @@ For task_update, use action "none" unless the custom prompt explicitly asks you 
         "format": "json",
         "options": {
             "temperature": config["temperature"],
-            "num_predict": config["num_predict"],
+            "num_predict": max(config["num_predict"], 900)
+            if custom_prompt_wants_intro
+            else config["num_predict"],
         },
     }
 
@@ -923,20 +1057,44 @@ For task_update, use action "none" unless the custom prompt explicitly asks you 
 
     response.raise_for_status()
 
-    content = response.json()["message"]["content"]
+    response_data = response.json()
+    content = response_data["message"]["content"]
     try:
         agent_output = parse_model_json(content)
 
     except json.JSONDecodeError:
         print("INVALID JSON FROM MODEL:")
+        print(f"Done reason: {response_data.get('done_reason', 'unknown')}")
         print(content)
 
-        return {
-            "error": f"{agent_name} returned invalid JSON.",
-            "raw_content": content
+        try:
+            agent_output = repair_model_json(content, config)
+            print(f"Repaired invalid JSON from {agent_name}.")
+        except Exception as repair_error:
+            print("JSON REPAIR FAILED:")
+            print(repair_error)
+
+            return {
+                "error": f"{agent_name} returned invalid JSON.",
+                "raw_content": content
+            }
+
+    normalized_output = normalize_agent_output(agent_output, agent_name)
+
+    if custom_prompt and not asks_to_modify_task(custom_prompt):
+        normalized_output["task_update"] = {
+            "action": "none",
+            "title": "",
+            "owner": agent_name,
+            "target": "",
+            "status": "",
+            "progress": 0,
+            "energy_cost": 0,
+            "energy_reward": 0,
+            "recruitment_note": "",
         }
 
-    return agent_output
+    return normalized_output
     
 
 @app.get("/api/{agent_name}/tick")
