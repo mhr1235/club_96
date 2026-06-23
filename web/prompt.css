@@ -1,10 +1,58 @@
 body {
   box-sizing: border-box;
+  position: relative;
+  isolation: isolate;
   max-width: 1000px;
+  min-height: 100vh;
   margin: auto;
   padding: 2rem;
   color: var(--color-page-text);
   font-family: var(--font-base);
+}
+
+body > :not(.page-background) {
+  position: relative;
+  z-index: 2;
+}
+
+.page-background {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background-color: #111;
+  background-position: center;
+  background-size: cover;
+  opacity: 0;
+  transition: opacity 1600ms ease;
+}
+
+.page-background.is-visible {
+  opacity: 0.82;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  background:
+    linear-gradient(90deg, rgba(8, 8, 10, 0.38), rgba(8, 8, 10, 0.18) 50%, rgba(8, 8, 10, 0.38)),
+    linear-gradient(180deg, rgba(8, 8, 10, 0.18), rgba(8, 8, 10, 0.32));
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-background {
+    transition: none;
+  }
+
+  .agent-card::after {
+    animation: none;
+  }
+
+  .agent-card::before {
+    animation: none;
+  }
 }
 
 h1 {
@@ -60,8 +108,12 @@ textarea:focus {
 .agent-card {
   position: relative;
   overflow: hidden;
-  border-color: rgba(255, 255, 255, 0.18);
-  box-shadow: 0 22px 70px rgba(0, 0, 0, 0.34);
+  --mx: 50%;
+  --my: 18%;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow:
+    0 22px 70px rgba(0, 0, 0, 0.34),
+    0 0 36px var(--agent-card-glow, rgba(255, 255, 255, 0.12));
 }
 
 .agent-card > * {
@@ -75,10 +127,87 @@ textarea:focus {
   inset: 0;
   z-index: 0;
   opacity: 0.9;
-  background: var(--agent-card-bg);
+  background:
+    radial-gradient(
+      circle at var(--mx) var(--my),
+      var(--agent-card-hover, rgba(255, 255, 255, 0.24)),
+      transparent 34%
+    ),
+    var(--agent-card-bg);
+  background-size: 145% 145%, 180% 180%;
+  background-position: center, var(--agent-bg-start, 0% 0%);
+  filter: brightness(var(--agent-brightness, 1));
+  transition:
+    filter 450ms ease,
+    opacity 450ms ease;
+  animation:
+    agent-gradient-drift var(--agent-bg-speed, 18s) ease-in-out infinite alternate,
+    agent-gradient-breathe var(--agent-breathe-speed, 5s) ease-in-out infinite;
+  animation-delay:
+    var(--agent-bg-delay, 0s),
+    var(--agent-breathe-delay, 0s);
+}
+
+.agent-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  padding: 1px;
+  border-radius: inherit;
+  background:
+    conic-gradient(
+      from var(--rim-angle),
+      transparent 0deg,
+      transparent 34deg,
+      rgba(255, 255, 255, 0.95) 44deg,
+      var(--agent-card-travel, rgba(255, 255, 255, 0.8)) 54deg,
+      transparent 74deg,
+      transparent 360deg
+    ),
+    var(--agent-card-spectrum);
+  background-size: 220% 220%;
+  opacity: 0.9;
+  pointer-events: none;
+  filter: drop-shadow(0 0 8px var(--agent-card-travel, rgba(255, 255, 255, 0.45)));
+  animation:
+    spectral-card-rim var(--agent-rim-speed, 6s) linear infinite,
+    spectral-card-pulse var(--agent-pulse-speed, 2.4s) ease-in-out infinite;
+  animation-delay:
+    var(--agent-rim-delay, 0s),
+    var(--agent-pulse-delay, 0s);
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
 }
 
 .agent-card-alice {
+  --agent-card-glow: rgba(0, 229, 255, 0.18);
+  --agent-card-travel: rgba(0, 229, 255, 0.85);
+  --agent-card-hover: rgba(255, 214, 102, 0.28);
+  --agent-bg-speed: 16s;
+  --agent-breathe-speed: 4.7s;
+  --agent-bg-delay: -3s;
+  --agent-breathe-delay: -1.1s;
+  --agent-bg-start: 12% 0%;
+  --agent-rim-speed: 5.7s;
+  --agent-pulse-speed: 2.15s;
+  --agent-rim-delay: -1.3s;
+  --agent-pulse-delay: -0.4s;
+  --agent-card-spectrum:
+    conic-gradient(
+      from var(--rim-angle),
+      rgba(255, 91, 141, 0.95),
+      rgba(255, 214, 102, 0.8),
+      rgba(0, 229, 255, 0.95),
+      rgba(118, 255, 214, 0.75),
+      rgba(255, 91, 141, 0.95)
+    );
   --agent-card-bg:
     radial-gradient(circle at 18% 0%, rgba(255, 91, 141, 0.52), transparent 36%),
     radial-gradient(circle at 92% 18%, rgba(0, 229, 255, 0.5), transparent 42%),
@@ -87,6 +216,27 @@ textarea:focus {
 }
 
 .agent-card-bob {
+  --agent-card-glow: rgba(247, 201, 72, 0.16);
+  --agent-card-travel: rgba(247, 201, 72, 0.85);
+  --agent-card-hover: rgba(140, 255, 198, 0.2);
+  --agent-bg-speed: 22s;
+  --agent-breathe-speed: 6.3s;
+  --agent-bg-delay: -8s;
+  --agent-breathe-delay: -2.5s;
+  --agent-bg-start: 0% 18%;
+  --agent-rim-speed: 8.4s;
+  --agent-pulse-speed: 3.1s;
+  --agent-rim-delay: -3.8s;
+  --agent-pulse-delay: -1.5s;
+  --agent-card-spectrum:
+    conic-gradient(
+      from var(--rim-angle),
+      rgba(32, 201, 151, 0.9),
+      rgba(247, 201, 72, 0.88),
+      rgba(140, 255, 198, 0.72),
+      rgba(78, 119, 76, 0.86),
+      rgba(32, 201, 151, 0.9)
+    );
   --agent-card-bg:
     radial-gradient(circle at 10% 0%, rgba(32, 201, 151, 0.45), transparent 40%),
     radial-gradient(circle at 90% 15%, rgba(247, 201, 72, 0.35), transparent 36%),
@@ -94,11 +244,88 @@ textarea:focus {
 }
 
 .agent-card-mallory {
+  --agent-card-glow: rgba(255, 46, 136, 0.18);
+  --agent-card-travel: rgba(57, 255, 20, 0.8);
+  --agent-card-hover: rgba(57, 255, 20, 0.2);
+  --agent-bg-speed: 13s;
+  --agent-breathe-speed: 3.8s;
+  --agent-bg-delay: -5.5s;
+  --agent-breathe-delay: -1.7s;
+  --agent-bg-start: 22% 8%;
+  --agent-rim-speed: 4.9s;
+  --agent-pulse-speed: 1.85s;
+  --agent-rim-delay: -2.2s;
+  --agent-pulse-delay: -0.9s;
+  --agent-card-spectrum:
+    conic-gradient(
+      from var(--rim-angle),
+      rgba(124, 58, 237, 0.95),
+      rgba(255, 46, 136, 0.95),
+      rgba(57, 255, 20, 0.75),
+      rgba(0, 213, 255, 0.72),
+      rgba(124, 58, 237, 0.95)
+    );
   --agent-card-bg:
     radial-gradient(circle at 20% 0%, rgba(124, 58, 237, 0.55), transparent 40%),
     radial-gradient(circle at 95% 10%, rgba(255, 46, 136, 0.5), transparent 35%),
     radial-gradient(circle at 80% 90%, rgba(57, 255, 20, 0.25), transparent 34%),
     linear-gradient(135deg, #09090f, #17111f);
+}
+
+@property --rim-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes spectral-card-rim {
+  from {
+    --rim-angle: 0deg;
+  }
+
+  to {
+    --rim-angle: 360deg;
+  }
+}
+
+@keyframes spectral-card-pulse {
+  0%,
+  100% {
+    opacity: 0.58;
+    filter: drop-shadow(0 0 5px var(--agent-card-travel, rgba(255, 255, 255, 0.35)));
+  }
+
+  50% {
+    opacity: 1;
+    filter:
+      drop-shadow(0 0 10px var(--agent-card-travel, rgba(255, 255, 255, 0.55)))
+      drop-shadow(0 0 18px var(--agent-card-travel, rgba(255, 255, 255, 0.28)));
+  }
+}
+
+@keyframes agent-gradient-drift {
+  0% {
+    background-position: center, var(--agent-bg-start, 0% 0%);
+  }
+
+  45% {
+    background-position: center, 74% 26%;
+  }
+
+  100% {
+    background-position: center, 18% 92%;
+  }
+}
+
+@keyframes agent-gradient-breathe {
+  0%,
+  100% {
+    filter: brightness(0.92) saturate(1);
+  }
+
+  50% {
+    filter: brightness(1.12) saturate(1.18);
+  }
 }
 
 .label {

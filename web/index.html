@@ -8,6 +8,9 @@
   <link rel="stylesheet" href="/static/prompt.css" />
 </head>
 <body>
+  <div class="page-background page-background-a" aria-hidden="true"></div>
+  <div class="page-background page-background-b" aria-hidden="true"></div>
+
   <h1>Club_96</h1>
   <p class="subtitle">Custom prompt tester for individual agents.</p>
 
@@ -61,6 +64,81 @@
   </div>
 
   <script>
+    const backgroundImages = [
+      "/static/graphics/backgrounds/ariana.jpg",
+      "/static/graphics/backgrounds/dykes.jpg",
+      "/static/graphics/backgrounds/fist.jpg",
+      "/static/graphics/backgrounds/justice.jpg",
+      "/static/graphics/backgrounds/leathermen.jpg",
+      "/static/graphics/backgrounds/makingit.jpg",
+      "/static/graphics/backgrounds/minimalist.jpg",
+      "/static/graphics/backgrounds/onsex.jpg",
+      "/static/graphics/backgrounds/punks.jpg",
+      "/static/graphics/backgrounds/titties.jpg",
+      "/static/graphics/backgrounds/trans.jpg",
+    ];
+
+    function randomBackgroundIndex(previousIndex) {
+      if (backgroundImages.length < 2) {
+        return 0;
+      }
+
+      let nextIndex = previousIndex;
+
+      while (nextIndex === previousIndex) {
+        nextIndex = Math.floor(Math.random() * backgroundImages.length);
+      }
+
+      return nextIndex;
+    }
+
+    function startBackgroundRotation() {
+      const layers = [
+        document.querySelector(".page-background-a"),
+        document.querySelector(".page-background-b"),
+      ];
+
+      if (!layers[0] || !layers[1] || !backgroundImages.length) {
+        return;
+      }
+
+      let activeLayer = 0;
+      let activeIndex = randomBackgroundIndex(-1);
+      layers[activeLayer].style.backgroundImage = `url("${backgroundImages[activeIndex]}")`;
+      layers[activeLayer].classList.add("is-visible");
+
+      window.setInterval(() => {
+        const nextLayer = activeLayer === 0 ? 1 : 0;
+        activeIndex = randomBackgroundIndex(activeIndex);
+        layers[nextLayer].style.backgroundImage = `url("${backgroundImages[activeIndex]}")`;
+        layers[nextLayer].classList.add("is-visible");
+        layers[activeLayer].classList.remove("is-visible");
+        activeLayer = nextLayer;
+      }, 20000);
+    }
+
+    function startAgentCardTracking() {
+      const cards = document.querySelectorAll(".agent-card");
+
+      cards.forEach((card) => {
+        card.addEventListener("pointermove", (event) => {
+          const rect = card.getBoundingClientRect();
+          const x = ((event.clientX - rect.left) / rect.width) * 100;
+          const y = ((event.clientY - rect.top) / rect.height) * 100;
+
+          card.style.setProperty("--mx", `${x.toFixed(1)}%`);
+          card.style.setProperty("--my", `${y.toFixed(1)}%`);
+          card.style.setProperty("--agent-brightness", "1.12");
+        });
+
+        card.addEventListener("pointerleave", () => {
+          card.style.setProperty("--mx", "50%");
+          card.style.setProperty("--my", "18%");
+          card.style.setProperty("--agent-brightness", "1");
+        });
+      });
+    }
+
     function setAgentLoading(agentName) {
       document.getElementById(`${agentName}-speech`).textContent = "Thinking...";
       document.getElementById(`${agentName}-mood`).textContent = "—";
@@ -119,6 +197,9 @@
         document.getElementById("status").textContent = `Error asking ${agentName}.`;
       }
     }
+
+    startBackgroundRotation();
+    startAgentCardTracking();
   </script>
 </body>
 </html>
