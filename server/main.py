@@ -1,5 +1,6 @@
 from pathlib import Path
 import json
+import os
 import requests
 import random
 import chromadb
@@ -44,6 +45,8 @@ RAG_EMBED_MODEL = "nomic-embed-text"
 RAG_RESULTS = 5
 RAG_CANDIDATE_RESULTS = 15
 RAG_DISTANCE_THRESHOLD = 475
+RUNTIME_PROFILE = os.getenv("CLUB96_RUNTIME_PROFILE", "local").strip().lower()
+RICH_CUSTOM_PROMPTS = RUNTIME_PROFILE in {"rich", "m5", "full"}
 
 AGENT_RAG_QUERY_EXPANSIONS = {
     "alice": (
@@ -58,24 +61,24 @@ app.mount("/static", StaticFiles(directory=WEB), name="static")
 
 AGENT_CONFIG = {
     "alice": {
-        "ollama_url": "http://localhost:11434",
-        #"ollama_url": "http://100.105.66.12:11434",
+        #"ollama_url": "http://localhost:11434",
+        "ollama_url": "http://100.115.49.17:11434",
         "model": "gemma3:4b",
         "temperature": 0.8,
         "num_predict": 520,
         "min_response_length": 6,
     },
     "bob": {
-        "ollama_url": "http://localhost:11434",
-        #"ollama_url": "http://100.91.216.63:11434",
+        #"ollama_url": "http://localhost:11434",
+        "ollama_url": "http://100.115.49.17:11434",
         "model": "llama3.2:latest",
         "temperature": 0.75,
         "num_predict": 420,
         "min_response_length": 6,
     },
     "mallory": {
-        "ollama_url": "http://localhost:11434",
-        #"ollama_url": "http://100.76.188.88:11434",
+        #"ollama_url": "http://localhost:11434",
+        "ollama_url": "http://100.115.49.17:11434",
         "model": "mistral:7b",
         "temperature": 1.05,
         "num_predict": 560,
@@ -231,6 +234,67 @@ Malformed output:
     )
     response.raise_for_status()
     return parse_model_json(response.json()["message"]["content"])
+
+
+def run_local_custom_prompt_retry(
+    agent_name,
+    config,
+    character,
+    speaking_style,
+    custom_prompt,
+    rag_notes,
+    custom_prompt_wants_intro,
+):
+    response_style = (
+        "Answer in 2-3 vivid sentences, around 50-85 words. "
+        "Name your persona and mention at least two concrete proper nouns, places, texts, events, or archives from the reference notes."
+        if custom_prompt_wants_intro
+        else "Answer in 1-2 short sentences."
+    )
+
+    payload = {
+        "model": config["model"],
+        "messages": [
+            {
+                "role": "system",
+                "content": f"""
+{character}
+
+## Speaking Style
+{speaking_style}
+
+You are {agent_name}. Return plain speech text only.
+Do not return JSON, markdown, labels, or commentary.
+""",
+            },
+            {
+                "role": "user",
+                "content": f"""
+Custom prompt:
+{custom_prompt}
+
+Reference notes:
+{rag_notes}
+
+{response_style}
+Stay in character. Use only details present in the reference notes when describing your RAG corpus.
+""",
+            },
+        ],
+        "stream": False,
+        "options": {
+            "temperature": config["temperature"],
+            "num_predict": 420,
+        },
+    }
+
+    response = requests.post(
+        f'{config["ollama_url"]}/api/chat',
+        json=payload,
+        timeout=120,
+    )
+    response.raise_for_status()
+    return response.json()
 
 
 def normalize_agent_output(agent_output, agent_name):
@@ -955,6 +1019,45 @@ speech, mood, action, memory_update, task_update.
 
     if custom_prompt:
         retrieved_reference_section = ""
+        custom_json_instruction = (
+            """
+Return ONLY valid JSON.
+No markdown.
+No commentary.
+
+The JSON must include all five top-level keys:
+speech, mood, action, memory_update, task_update.
+
+For task_update, use action "none" unless the custom prompt explicitly asks you to propose or modify a task.
+
+{{
+  "speech": "What the agent says aloud in response to the custom prompt; if Relevant Knowledge exists, include its concrete proper noun, place, event, date, or detail here.",
+  "mood": "one-word mood",
+  "action": {{
+    "type": "short_action_type",
+    "description": "what the agent decides to do next"
+  }},
+  "memory_update": "one concrete memory as a string, or an empty string if this should not affect long-term memory; never introduce a RAG detail here unless it already appeared in speech.",
+  "task_update": {{
+    "action": "create|support|object|join|recruit|leave|work|update|complete|rest|none",
+    "title": "short task title",
+    "owner": "alice|bob|mallory",
+    "target": "alice|bob|mallory",
+    "status": "proposed|open|in_progress|ready_to_complete|completed|rejected",
+    "progress": 0,
+    "energy_cost": 10,
+    "energy_reward": 20,
+    "recruitment_note": "why you want another agent involved"
+  }}
+}}
+"""
+            if RICH_CUSTOM_PROMPTS
+            else """
+Return only the speech text.
+Do not return JSON.
+Do not add labels, markdown, commentary, or explanations.
+"""
+        )
         custom_response_style = (
             "Your speech should be a workshop introduction: 3-4 sentences, warm and vivid, "
             "still in character, around 90-140 words. Name your persona, explain what kinds of sources are in your RAG corpus, "
@@ -1002,36 +1105,10 @@ Do not summarize the situation.
 Say vivid, specific things in your own voice.
 Your speech should be at least {config["min_response_length"]} words.
 
-Return ONLY valid JSON.
-No markdown.
-No commentary.
-
-The JSON must include all five top-level keys:
-speech, mood, action, memory_update, task_update.
-
-For task_update, use action "none" unless the custom prompt explicitly asks you to propose or modify a task.
-
-{{
-  "speech": "What the agent says aloud in response to the custom prompt; if Relevant Knowledge exists, include its concrete proper noun, place, event, date, or detail here.",
-  "mood": "one-word mood",
-  "action": {{
-    "type": "short_action_type",
-    "description": "what the agent decides to do next"
-  }},
-  "memory_update": "one concrete memory as a string, or an empty string if this should not affect long-term memory; never introduce a RAG detail here unless it already appeared in speech.",
-  "task_update": {{
-    "action": "create|support|object|join|recruit|leave|work|update|complete|rest|none",
-    "title": "short task title",
-    "owner": "alice|bob|mallory",
-    "target": "alice|bob|mallory",
-    "status": "proposed|open|in_progress|ready_to_complete|completed|rejected",
-    "progress": 0,
-    "energy_cost": 10,
-    "energy_reward": 20,
-    "recruitment_note": "why you want another agent involved"
-  }}
-}}
+{custom_json_instruction}
 """
+
+    local_plain_custom_prompt = custom_prompt and not RICH_CUSTOM_PROMPTS
 
     payload = {
         "model": config["model"],
@@ -1040,14 +1117,20 @@ For task_update, use action "none" unless the custom prompt explicitly asks you 
             {"role": "user", "content": user_prompt},
         ],
         "stream": False,
-        "format": "json",
         "options": {
             "temperature": config["temperature"],
-            "num_predict": max(config["num_predict"], 900)
-            if custom_prompt_wants_intro
+            "num_predict": (
+                max(config["num_predict"], 1000)
+                if RICH_CUSTOM_PROMPTS
+                else max(config["num_predict"], 700)
+            )
+            if custom_prompt_wants_intro or custom_prompt_needs_sources
             else config["num_predict"],
         },
     }
+
+    if not local_plain_custom_prompt:
+        payload["format"] = "json"
 
     response = requests.post(
         f'{config["ollama_url"]}/api/chat',
@@ -1059,25 +1142,96 @@ For task_update, use action "none" unless the custom prompt explicitly asks you 
 
     response_data = response.json()
     content = response_data["message"]["content"]
-    try:
-        agent_output = parse_model_json(content)
 
-    except json.JSONDecodeError:
-        print("INVALID JSON FROM MODEL:")
-        print(f"Done reason: {response_data.get('done_reason', 'unknown')}")
-        print(content)
+    if local_plain_custom_prompt:
+        speech_text = normalize_text(content).strip('"')
+        word_count = len(speech_text.split())
 
+        if response_data.get("done_reason") == "length" or word_count < config["min_response_length"]:
+            print(f"Retrying local custom prompt for {agent_name} with compact prompt.")
+            retry_data = run_local_custom_prompt_retry(
+                agent_name,
+                config,
+                character,
+                speaking_style,
+                custom_prompt,
+                rag_notes,
+                custom_prompt_wants_intro,
+            )
+            speech_text = normalize_text(retry_data["message"]["content"]).strip('"')
+
+        agent_output = {
+            "speech": speech_text,
+            "mood": normalize_text(state.get("mood", "neutral")) or "neutral",
+            "action": {
+                "type": "none",
+                "description": "",
+            },
+            "memory_update": "",
+            "task_update": {
+                "action": "none",
+                "title": "",
+                "owner": agent_name,
+                "target": "",
+                "status": "",
+                "progress": 0,
+                "energy_cost": 0,
+                "energy_reward": 0,
+                "recruitment_note": "",
+            },
+        }
+    else:
         try:
-            agent_output = repair_model_json(content, config)
-            print(f"Repaired invalid JSON from {agent_name}.")
-        except Exception as repair_error:
-            print("JSON REPAIR FAILED:")
-            print(repair_error)
+            agent_output = parse_model_json(content)
 
-            return {
-                "error": f"{agent_name} returned invalid JSON.",
-                "raw_content": content
-            }
+        except json.JSONDecodeError:
+            print("INVALID JSON FROM MODEL:")
+            print(f"Done reason: {response_data.get('done_reason', 'unknown')}")
+            print(content)
+
+            try:
+                agent_output = repair_model_json(content, config)
+                print(f"Repaired invalid JSON from {agent_name}.")
+            except Exception as repair_error:
+                print("JSON REPAIR FAILED:")
+                print(repair_error)
+
+                if custom_prompt:
+                    print(f"Falling back to compact custom prompt for {agent_name}.")
+                    retry_data = run_local_custom_prompt_retry(
+                        agent_name,
+                        config,
+                        character,
+                        speaking_style,
+                        custom_prompt,
+                        rag_notes,
+                        custom_prompt_wants_intro,
+                    )
+                    agent_output = {
+                        "speech": normalize_text(retry_data["message"]["content"]).strip('"'),
+                        "mood": normalize_text(state.get("mood", "neutral")) or "neutral",
+                        "action": {
+                            "type": "none",
+                            "description": "",
+                        },
+                        "memory_update": "",
+                        "task_update": {
+                            "action": "none",
+                            "title": "",
+                            "owner": agent_name,
+                            "target": "",
+                            "status": "",
+                            "progress": 0,
+                            "energy_cost": 0,
+                            "energy_reward": 0,
+                            "recruitment_note": "",
+                        },
+                    }
+                else:
+                    return {
+                        "error": f"{agent_name} returned invalid JSON.",
+                        "raw_content": content
+                    }
 
     normalized_output = normalize_agent_output(agent_output, agent_name)
 
