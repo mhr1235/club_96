@@ -35,9 +35,11 @@
   <script>
     const pollIntervalMs = 700;
     const outputHoldMs = 4500;
+    const switchCooldownMs = 1800;
     let currentAgent = "alice";
     let latestTurnKey = "";
     let holdOutputUntil = 0;
+    let lastSwitchAt = 0;
     let pollInFlight = false;
 
     function entryKey(entry) {
@@ -53,9 +55,15 @@
         return;
       }
 
+      if (Date.now() - lastSwitchAt < switchCooldownMs) {
+        return;
+      }
+
+      const frame = document.getElementById("agent-frame");
       currentAgent = agentName;
+      lastSwitchAt = Date.now();
       document.title = `${agentName.charAt(0).toUpperCase() + agentName.slice(1)} Dialogue`;
-      document.getElementById("agent-frame").src = `/agent/${agentName}`;
+      frame.src = `/agent/${agentName}`;
     }
 
     async function fetchFollowSnapshot() {
