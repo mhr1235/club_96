@@ -297,8 +297,13 @@ function renderConversation(conversation, animateLast = false) {
 
         const data = await response.json();
 
-        if (!response.ok || data.result?.error) {
-          throw new Error(data.result?.error || data.error || `HTTP ${response.status}`);
+        if (!response.ok || data.result?.error || data.result?.repaired_invalid_json) {
+          throw new Error(
+            data.result?.error ||
+            (data.result?.repaired_invalid_json ? `${data.agent} returned invalid JSON and was repaired.` : "") ||
+            data.error ||
+            `HTTP ${response.status}`
+          );
         }
 
         if (data.conversation) {

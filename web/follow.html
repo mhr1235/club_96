@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <title>Agent Follow</title>
   <link rel="icon" type="image/png" href="/static/graphics/club96.png" />
+  <link rel="stylesheet" href="/static/styles.css?v=agent-follow-lite-1" />
   <style>
     * {
       box-sizing: border-box;
@@ -16,31 +17,121 @@
       overflow: hidden;
     }
 
-    body {
-      background: #111;
+    main {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+      padding: clamp(1.5rem, 3vw, 3rem);
+      position: relative;
     }
 
-    iframe {
-      border: 0;
-      display: block;
+    h1 {
+      font-size: clamp(4rem, 8vw, 9rem);
+      line-height: 0.9;
+      margin: 0 0 clamp(1.25rem, 3vw, 2.5rem);
+      text-transform: uppercase;
+    }
+
+    .meta {
+      display: none;
+    }
+
+    .speech-shell {
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .speech {
+      color: var(--color-agent-text);
+      font-size: clamp(2rem, 3.6vw, 5rem);
+      line-height: 1.25;
+      overflow-wrap: break-word;
+    }
+
+    .waiting {
+      font-family: system-ui, sans-serif;
+      text-transform: none;
+    }
+
+    .thinking-video {
+      background: inherit;
       height: 100vh;
+      inset: 0;
+      object-fit: cover;
+      object-position: center top;
+      opacity: 0;
+      pointer-events: none;
+      position: fixed;
+      transform: scale(1.01) translateY(1.4vh);
+      transition: opacity 160ms ease;
       width: 100vw;
+      z-index: 5;
+    }
+
+    .thinking .thinking-video {
+      opacity: 1;
+    }
+
+    .thinking h1 {
+      opacity: 0;
+    }
+
+    .thinking .speech {
+      opacity: 0;
+    }
+
+    .cursor::after {
+      animation: blink 0.8s infinite;
+      content: "▋";
+      margin-left: 2px;
+    }
+
+    @keyframes blink {
+      0%, 50% { opacity: 1; }
+      51%, 100% { opacity: 0; }
     }
   </style>
 </head>
 
 <body>
-  <iframe id="agent-frame" title="Agent follow display" src="/agent/alice"></iframe>
+  <main id="page" class="">
+    <h1 id="agent-name">Agent</h1>
+    <div id="meta" class="meta">Waiting for output.</div>
+    <div class="speech-shell">
+      <video id="thinking-video" class="thinking-video" muted loop playsinline preload="auto"></video>
+      <div id="speech" class="speech waiting">Start or advance the simulation to update this display.</div>
+    </div>
+  </main>
 
   <script>
     const pollIntervalMs = 700;
     const outputHoldMs = 4500;
-    const switchCooldownMs = 1800;
-    let currentAgent = "alice";
-    let latestTurnKey = "";
+    const typingSpeedMs = 18;
+    const thinkingVideos = {
+      alice: "/static/video/alice-think.mov",
+      bob: "/static/video/bob-think.mov",
+      mallory: "/static/video/mallory-think.mov",
+    };
+
+    let currentAgent = "";
+    let displayedTurnKey = "";
     let holdOutputUntil = 0;
-    let lastSwitchAt = 0;
     let pollInFlight = false;
+    let typeRunId = 0;
+    let isTyping = false;
+    let isThinking = false;
+    let currentVideoSource = "";
+
+    function titleize(value) {
+      if (!value) {
+        return "Agent";
+      }
+
+      return value.charAt(0).toUpperCase() + value.slice(1);
+    }
 
     function entryKey(entry) {
       if (!entry) {
@@ -50,20 +141,140 @@
       return `${entry.turn}:${entry.speaker}:${entry.speech}`;
     }
 
-    function setFrameAgent(agentName) {
-      if (!agentName || agentName === currentAgent) {
+    function setText(id, value) {
+      const element = document.getElementById(id);
+      if (element) {
+        element.textContent = value;
+      }
+    }
+
+    function setAgent(agentName) {
+      const page = document.getElementById("page");
+      if (!page || !agentName) {
         return;
       }
 
-      if (Date.now() - lastSwitchAt < switchCooldownMs) {
-        return;
-      }
-
-      const frame = document.getElementById("agent-frame");
       currentAgent = agentName;
-      lastSwitchAt = Date.now();
-      document.title = `${agentName.charAt(0).toUpperCase() + agentName.slice(1)} Dialogue`;
-      frame.src = `/agent/${agentName}`;
+      page.className = `${agentName}${page.classList.contains("thinking") ? " thinking" : ""}`;
+      document.title = `${titleize(agentName)} Dialogue`;
+      setText("agent-name", titleize(agentName));
+    }
+
+    function setThinking(nextIsThinking) {
+      const page = document.getElementById("page");
+      const video = document.getElementById("thinking-video");
+      if (!page) {
+        return;
+      }
+
+      const changed = isThinking !== nextIsThinking;
+      isThinking = nextIsThinking;
+      page.classList.toggle("thinking", isThinking);
+
+      if (!video) {
+        return;
+      }
+
+      if (isThinking) {
+        const source = thinkingVideos[currentAgent];
+        if (source && currentVideoSource !== source) {
+          video.src = source;
+          currentVideoSource = source;
+        }
+
+        if (changed || video.paused) {
+          video.currentTime = 0;
+          video.play().catch(() => {});
+        }
+      } else {
+        video.pause();
+      }
+    }
+
+    function setSpeech(value, isWaiting) {
+      const speech = document.getElementById("speech");
+      if (!speech) {
+        return;
+      }
+
+      speech.textContent = value;
+      speech.classList.toggle("waiting", Boolean(isWaiting));
+      requestAnimationFrame(fitSpeechToViewport);
+    }
+
+    function cancelTyping() {
+      typeRunId++;
+      isTyping = false;
+
+      const speech = document.getElementById("speech");
+      if (speech) {
+        speech.classList.remove("cursor");
+      }
+    }
+
+    function typeSpeech(value) {
+      const speech = document.getElementById("speech");
+      if (!speech) {
+        return;
+      }
+
+      const runId = ++typeRunId;
+      speech.textContent = "";
+      speech.classList.remove("waiting");
+      speech.classList.add("cursor");
+      isTyping = true;
+
+      let index = 0;
+
+      function typeNextCharacter() {
+        if (runId !== typeRunId) {
+          return;
+        }
+
+        if (index < value.length) {
+          speech.textContent += value[index];
+          index++;
+          requestAnimationFrame(fitSpeechToViewport);
+          setTimeout(typeNextCharacter, typingSpeedMs);
+        } else {
+          speech.classList.remove("cursor");
+          isTyping = false;
+        }
+      }
+
+      typeNextCharacter();
+    }
+
+    function getDisplayFontSize() {
+      const speech = document.getElementById("speech");
+      if (speech) {
+        speech.style.fontSize = "";
+        return parseFloat(getComputedStyle(speech).fontSize) || 48;
+      }
+
+      return 48;
+    }
+
+    function fitSpeechToViewport() {
+      const speech = document.getElementById("speech");
+      const page = document.getElementById("page");
+      if (!speech || !page) {
+        return;
+      }
+
+      const styles = getComputedStyle(page);
+      const bottomPadding = parseFloat(styles.paddingBottom) || 0;
+      const availableHeight = window.innerHeight - speech.offsetTop - bottomPadding - 12;
+      const maxSize = getDisplayFontSize();
+      const minSize = 20;
+
+      speech.style.fontSize = `${maxSize}px`;
+
+      let size = maxSize;
+      while (speech.scrollHeight > availableHeight && size > minSize) {
+        size -= 2;
+        speech.style.fontSize = `${size}px`;
+      }
     }
 
     async function fetchFollowSnapshot() {
@@ -73,13 +284,49 @@
           return null;
         }
 
-        return await response.json();
+        return JSON.parse(await response.text());
       } catch (error) {
         return null;
       }
     }
 
-    async function updateFollowFrame() {
+    function showOutput(entry) {
+      if (!entry) {
+        return;
+      }
+
+      const key = entryKey(entry);
+      const speech = document.getElementById("speech");
+      if (key === displayedTurnKey && speech && speech.textContent.trim()) {
+        return;
+      }
+
+      cancelTyping();
+      setAgent(entry.speaker);
+      setThinking(false);
+      setText("meta", `Turn ${entry.turn} · Mood: ${entry.mood || "-"}`);
+      typeSpeech(entry.speech || "No speech returned.");
+      displayedTurnKey = key;
+      holdOutputUntil = Date.now() + outputHoldMs;
+    }
+
+    function showThinking(agentName, previousEntry) {
+      if (isTyping) {
+        return;
+      }
+
+      setAgent(agentName);
+      setThinking(true);
+      setText("meta", "Thinking.");
+
+      if (previousEntry && previousEntry.speech) {
+        setSpeech(previousEntry.speech, false);
+      } else {
+        setSpeech(`${titleize(agentName)} is thinking.`, true);
+      }
+    }
+
+    async function updateFollowDisplay() {
       if (pollInFlight) {
         return;
       }
@@ -92,13 +339,12 @@
           return;
         }
 
-        const latest = snapshot.latest_entry;
+        const latest = snapshot.latest_entry || null;
+        const activeAgent = snapshot.active_agent || "";
         const latestKey = entryKey(latest);
 
-        if (latest && latestKey && latestKey !== latestTurnKey) {
-          latestTurnKey = latestKey;
-          holdOutputUntil = Date.now() + outputHoldMs;
-          setFrameAgent(latest.speaker);
+        if (latest && latestKey !== displayedTurnKey) {
+          showOutput(latest);
           return;
         }
 
@@ -106,19 +352,29 @@
           return;
         }
 
-        if (snapshot.active_agent) {
-          setFrameAgent(snapshot.active_agent);
-        } else if (latest) {
-          setFrameAgent(latest.speaker);
+        if (activeAgent) {
+          showThinking(activeAgent, snapshot.active_agent_latest_entry || null);
+          return;
         }
+
+        if (latest) {
+          setThinking(false);
+          return;
+        }
+
+        setThinking(false);
+        setText("agent-name", "Agent");
+        setText("meta", "Waiting for output.");
+        setSpeech("Start or advance the simulation to update this display.", true);
       } finally {
         pollInFlight = false;
       }
     }
 
-    updateFollowFrame();
-    const pollIntervalId = setInterval(updateFollowFrame, pollIntervalMs);
+    updateFollowDisplay();
+    const pollIntervalId = setInterval(updateFollowDisplay, pollIntervalMs);
 
+    window.addEventListener("resize", fitSpeechToViewport);
     window.addEventListener("pagehide", () => {
       clearInterval(pollIntervalId);
     });
@@ -126,9 +382,13 @@
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") {
         pollInFlight = false;
-        updateFollowFrame();
+        updateFollowDisplay();
       }
     });
+
+    if (document.fonts) {
+      document.fonts.ready.then(fitSpeechToViewport).catch(() => {});
+    }
   </script>
 </body>
 </html>

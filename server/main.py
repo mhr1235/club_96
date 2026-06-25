@@ -210,6 +210,23 @@ def parse_model_json(content):
         return json.loads(content[start:end + 1])
 
 
+def validate_agent_json_shape(agent_output):
+    required_keys = {"speech", "mood", "action", "memory_update", "task_update"}
+
+    if not isinstance(agent_output, dict):
+        raise ValueError("model JSON was not an object")
+
+    missing_keys = required_keys - set(agent_output.keys())
+    if missing_keys:
+        raise ValueError(f"model JSON missing keys: {', '.join(sorted(missing_keys))}")
+
+    if not isinstance(agent_output.get("action"), dict):
+        raise ValueError("model JSON action was not an object")
+
+    if not isinstance(agent_output.get("task_update"), dict):
+        raise ValueError("model JSON task_update was not an object")
+
+
 def repair_model_json(content, config):
     payload = {
         "model": config["model"],
@@ -1162,6 +1179,8 @@ Your speech should be at least {config["min_response_length"]} words.
     response_data = response.json()
     content = response_data["message"]["content"]
 
+    repaired_invalid_json = False
+
     if local_plain_custom_prompt:
         speech_text = normalize_text(content).strip('"')
         word_count = len(speech_text.split())
@@ -1202,14 +1221,18 @@ Your speech should be at least {config["min_response_length"]} words.
     else:
         try:
             agent_output = parse_model_json(content)
+            validate_agent_json_shape(agent_output)
 
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, ValueError) as parse_error:
             print("INVALID JSON FROM MODEL:")
             print(f"Done reason: {response_data.get('done_reason', 'unknown')}")
+            print(parse_error)
             print(content)
 
             try:
                 agent_output = repair_model_json(content, config)
+                validate_agent_json_shape(agent_output)
+                repaired_invalid_json = True
                 print(f"Repaired invalid JSON from {agent_name}.")
             except Exception as repair_error:
                 print("JSON REPAIR FAILED:")
@@ -1253,6 +1276,7 @@ Your speech should be at least {config["min_response_length"]} words.
                     }
 
     normalized_output = normalize_agent_output(agent_output, agent_name)
+    normalized_output["repaired_invalid_json"] = repaired_invalid_json
 
     if custom_prompt and not asks_to_modify_task(custom_prompt):
         normalized_output["task_update"] = {
