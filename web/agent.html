@@ -138,6 +138,14 @@
       }
     }
 
+    async function readJsonSafely(response) {
+      try {
+        return JSON.parse(await response.text());
+      } catch (error) {
+        return null;
+      }
+    }
+
     function titleize(value) {
       return value.charAt(0).toUpperCase() + value.slice(1);
     }
@@ -456,7 +464,11 @@
           return;
         }
 
-        const conversation = await response.json();
+        const conversation = await readJsonSafely(response);
+        if (!conversation) {
+          return;
+        }
+
         const filtered = conversation.filter(entry => entry.speaker === agentName);
         const latest = filtered[filtered.length - 1];
 
@@ -511,7 +523,11 @@
           return;
         }
 
-        const status = await response.json();
+        const status = await readJsonSafely(response);
+        if (!status) {
+          return;
+        }
+
         const agentIsActive = status.active_agent === agentName;
 
         if (agentIsActive) {

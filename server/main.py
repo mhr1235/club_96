@@ -61,24 +61,24 @@ app.mount("/static", StaticFiles(directory=WEB), name="static")
 
 AGENT_CONFIG = {
     "alice": {
-        #"ollama_url": "http://localhost:11434",
-        "ollama_url": "http://100.115.49.17:11434",
+        "ollama_url": "http://localhost:11434",
+        #"ollama_url": "http://100.115.49.17:11434",
         "model": "gemma3:4b",
         "temperature": 0.8,
         "num_predict": 520,
         "min_response_length": 6,
     },
     "bob": {
-        #"ollama_url": "http://localhost:11434",
-        "ollama_url": "http://100.115.49.17:11434",
+        "ollama_url": "http://localhost:11434",
+        #"ollama_url": "http://100.115.49.17:11434",
         "model": "llama3.2:latest",
         "temperature": 0.75,
         "num_predict": 420,
         "min_response_length": 6,
     },
     "mallory": {
-        #"ollama_url": "http://localhost:11434",
-        "ollama_url": "http://100.115.49.17:11434",
+        "ollama_url": "http://localhost:11434",
+        #"ollama_url": "http://100.115.49.17:11434",
         "model": "mistral:7b",
         "temperature": 1.05,
         "num_predict": 560,
@@ -112,6 +112,12 @@ def home():
 def simulation_page():
     return FileResponse(WEB / "sim.html")
 
+
+@app.get("/agent/follow")
+def agent_follow_page():
+    return FileResponse(WEB / "follow.html")
+
+
 @app.get("/api/{agent_name}/memory")
 def get_agent_memory(agent_name: str):
     if agent_name not in TURN_ORDER:
@@ -128,6 +134,19 @@ def get_agent_memory(agent_name: str):
 
 @app.get("/agent/{agent_name}")
 def agent_dialogue_page(agent_name: str):
+    if agent_name not in TURN_ORDER:
+        return JSONResponse({"error": "unknown agent"}, status_code=404)
+
+    return FileResponse(WEB / "agent.html")
+
+
+@app.get("/agents/follow")
+def agents_follow_page():
+    return FileResponse(WEB / "follow.html")
+
+
+@app.get("/agents/{agent_name}")
+def agents_dialogue_page(agent_name: str):
     if agent_name not in TURN_ORDER:
         return JSONResponse({"error": "unknown agent"}, status_code=404)
 
@@ -1350,6 +1369,28 @@ def get_conversation():
 @app.get("/api/sim/status")
 def get_sim_status():
     return JSONResponse({"active_agent": ACTIVE_AGENT})
+
+
+@app.get("/api/sim/follow")
+def get_follow_status():
+    conversation = load_conversation()
+    latest_entry = conversation[-1] if conversation else None
+    active_agent_latest_entry = None
+
+    if ACTIVE_AGENT:
+        for entry in reversed(conversation):
+            if entry.get("speaker") == ACTIVE_AGENT:
+                active_agent_latest_entry = entry
+                break
+
+    return JSONResponse(
+        {
+            "active_agent": ACTIVE_AGENT,
+            "latest_entry": latest_entry,
+            "latest_turn": latest_entry.get("turn", 0) if latest_entry else 0,
+            "active_agent_latest_entry": active_agent_latest_entry,
+        }
+    )
 
 
 @app.get("/api/sim/tasks")

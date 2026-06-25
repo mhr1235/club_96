@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Agent Follow</title>
+  <link rel="icon" type="image/png" href="/static/graphics/club96.png" />
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+    }
+
+    body {
+      background: #111;
+    }
+
+    iframe {
+      border: 0;
+      display: block;
+      height: 100vh;
+      width: 100vw;
+    }
+  </style>
+</head>
+
+<body>
+  <iframe id="agent-frame" title="Agent follow display" src="/agent/alice"></iframe>
+
+  <script>
+    const pollIntervalMs = 700;
+    const outputHoldMs = 4500;
+    let currentAgent = "alice";
+    let latestTurnKey = "";
+    let holdOutputUntil = 0;
+    let pollInFlight = false;
+
+    function entryKey(entry) {
+      if (!entry) {
+        return "";
+      }
+
+      return `${entry.turn}:${entry.speaker}:${entry.speech}`;
+    }
+
+    function setFrameAgent(agentName) {
+      if (!agentName || agentName === currentAgent) {
+        return;
+      }
+
+      currentAgent = agentName;
+      document.title = `${agentName.charAt(0).toUpperCase() + agentName.slice(1)} Dialogue`;
+      document.getElementById("agent-frame").src = `/agent/${agentName}`;
+    }
+
+    async function fetchFollowSnapshot() {
+      try {
+        const response = await fetch("/api/sim/follow", { cache: "no-store" });
+        if (!response.ok) {
+          return null;
+        }
+
+        return await response.json();
+      } catch (error) {
+        return null;
+      }
+    }
+
+    async function updateFollowFrame() {
+      if (pollInFlight) {
+        return;
+      }
+
+      pollInFlight = true;
+
+      try {
+        const snapshot = await fetchFollowSnapshot();
+        if (!snapshot) {
+          return;
+        }
+
+        const latest = snapshot.latest_entry;
+        const latestKey = entryKey(latest);
+
+        if (latest && latestKey && latestKey !== latestTurnKey) {
+          latestTurnKey = latestKey;
+          holdOutputUntil = Date.now() + outputHoldMs;
+          setFrameAgent(latest.speaker);
+          return;
+        }
+
+        if (Date.now() < holdOutputUntil) {
+          return;
+        }
+
+        if (snapshot.active_agent) {
+          setFrameAgent(snapshot.active_agent);
+        } else if (latest) {
+          setFrameAgent(latest.speaker);
+        }
+      } finally {
+        pollInFlight = false;
+      }
+    }
+
+    updateFollowFrame();
+    const pollIntervalId = setInterval(updateFollowFrame, pollIntervalMs);
+
+    window.addEventListener("pagehide", () => {
+      clearInterval(pollIntervalId);
+    });
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        pollInFlight = false;
+        updateFollowFrame();
+      }
+    });
+  </script>
+</body>
+</html>
