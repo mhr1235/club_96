@@ -4,3 +4,4 @@ pillow
 pytesseract
 beautifulsoup4
 markdownify
+openai-whisper
