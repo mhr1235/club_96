@@ -8,6 +8,8 @@ Indexed chunk files:
 - `chunks/new_orleans_black_gay_history_chunks.md`
 - `chunks/southern_oral_history_chunks.md`
 - `chunks/bob_operations_harm_reduction_chunks.md`
+- `chunks/bob_gay_slang_labels_chunks.md`
+- `chunks/bob_leather_nightlife_memory_chunks.md`
 
 Source notes:
 
@@ -16,6 +18,8 @@ Source notes:
 - `sources/black_queer_southern_women_johnson_notes.md`
 - `sources/boston_cyberarts_press_notes.md`
 - `sources/fist_manual_source_notes.md`
+- `sources/gay_slang_labels_source_notes.md`
+- `sources/bob_leather_nightlife_memory_source_notes.md`
 - `sources/southern_speech_and_transcript_chunks.md`
 
 Pending source work:

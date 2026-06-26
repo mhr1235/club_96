@@ -11,6 +11,7 @@ Indexed chunk files:
 - `chunks/alice_archive_trans_memory_chunks.md`
 - `chunks/alice_queer_methods_mess_fieldwork_chunks.md`
 - `chunks/alice_queer_theory_events_media_chunks.md`
+- `chunks/alice_film_poetry_survival_language_chunks.md`
 
 Source notes:
 
@@ -19,3 +20,4 @@ Source notes:
 - `sources/queer_methods_reading_notes.md`
 - `sources/expanded_queer_methods_reading_notes.md`
 - `sources/alice_jagose_safe_desire_dyke_night_notes.md`
+- `sources/alice_film_poetry_survival_language_source_notes.md`
