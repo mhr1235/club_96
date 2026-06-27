@@ -1,6 +1,6 @@
 # Bob RAG Notes
 
-Bob's current retrieval set focuses on Black queer Southern history, venue operations, community memory, harm reduction, and practical inclusion.
+Bob's current retrieval set focuses on Black queer Southern history, leather/nightlife memory, venue operations, community memory, harm reduction, practical inclusion, and visible Southern voice.
 
 Indexed chunk files:
 
@@ -10,6 +10,7 @@ Indexed chunk files:
 - `chunks/bob_operations_harm_reduction_chunks.md`
 - `chunks/bob_gay_slang_labels_chunks.md`
 - `chunks/bob_leather_nightlife_memory_chunks.md`
+- `chunks/southern_speech_and_transcript_chunks.md`
 
 Source notes:
 
@@ -20,7 +21,7 @@ Source notes:
 - `sources/fist_manual_source_notes.md`
 - `sources/gay_slang_labels_source_notes.md`
 - `sources/bob_leather_nightlife_memory_source_notes.md`
-- `sources/southern_speech_and_transcript_chunks.md`
+- `sources/southern_speech_source_notes.md`
 
 Pending source work:
 
